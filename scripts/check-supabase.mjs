@@ -13,10 +13,26 @@
  * It creates one throwaway session row and deletes it again.
  */
 
+import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+/**
+ * A UTF-8 BOM makes the first variable in the file parse as "﻿NEXT_..."
+ * instead of "NEXT_...", so it silently goes missing. Easy to hit on Windows —
+ * PowerShell's `Set-Content -Encoding utf8` writes one — and the resulting
+ * "not set" message points nowhere near the cause.
+ */
+function hasBom(path) {
+  try {
+    const head = readFileSync(path).subarray(0, 3);
+    return head[0] === 0xef && head[1] === 0xbb && head[2] === 0xbf;
+  } catch {
+    return false;
+  }
+}
 
 const pass = (m) => console.log(`  ok    ${m}`);
 const fail = (m, hint) => {
@@ -26,10 +42,20 @@ const fail = (m, hint) => {
 };
 
 if (!url || !key) {
-  console.log(
-    "\nNEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY are not set.\n" +
-      "Put them in .env.local — see .env.example.\n",
-  );
+  if (hasBom(".env.local")) {
+    console.log(
+      "\n.env.local starts with a UTF-8 BOM, so the first variable in it is\n" +
+        "not being read.\n\n" +
+        "Re-save it as UTF-8 without BOM. In Notepad: File > Save as, set\n" +
+        "Encoding to UTF-8 (not 'UTF-8 with BOM'). In VS Code: click the\n" +
+        "encoding in the status bar > Save with Encoding > UTF-8.\n",
+    );
+  } else {
+    console.log(
+      "\nNEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY are not set.\n" +
+        "Put them in .env.local — see .env.example.\n",
+    );
+  }
   process.exit(1);
 }
 
