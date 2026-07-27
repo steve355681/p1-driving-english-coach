@@ -8,8 +8,24 @@
 
 export type EnglishLevel = "basic" | "intermediate" | "advanced";
 
-/** Minutes. Kept as a closed union — see FR-1 in the PRD. */
-export type SessionDuration = 10 | 15 | 20;
+/**
+ * Minutes, in 5-minute steps from 5 to 60. Kept as a closed union so an
+ * off-grid value is a type error; `DURATIONS` in `lib/constants.ts` is the
+ * runtime list and must stay in sync.
+ */
+export type SessionDuration =
+  | 5
+  | 10
+  | 15
+  | 20
+  | 25
+  | 30
+  | 35
+  | 40
+  | 45
+  | 50
+  | 55
+  | 60;
 
 /** Live session state machine states (`docs/04`, section 2). */
 export type SessionStatus =

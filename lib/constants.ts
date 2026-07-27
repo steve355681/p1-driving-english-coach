@@ -30,7 +30,13 @@ export const LEVELS: Array<{ value: EnglishLevel; label: string; hint: string }>
     { value: "advanced", label: "Advanced", hint: "接近母語者速度、少提示" },
   ];
 
-export const DURATIONS: SessionDuration[] = [10, 15, 20];
+/** 5 → 60 minutes in 5-minute steps. Must stay in sync with `SessionDuration`. */
+export const DURATIONS: SessionDuration[] = Array.from(
+  { length: 12 },
+  (_, index) => ((index + 1) * 5) as SessionDuration,
+);
+
+export const DEFAULT_DURATION: SessionDuration = 15;
 
 /** Short, glanceable labels. Never longer than a few characters — this text is
  *  read while driving. */

@@ -3,10 +3,17 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SafetyNotice } from "@/components/layout/SafetyNotice";
+import { DurationWheel } from "@/components/launcher/DurationWheel";
 import { OptionGroup } from "@/components/launcher/OptionGroup";
 import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { DURATIONS, LEVELS, ROUTES, TOPICS } from "@/lib/constants";
+import {
+  DEFAULT_DURATION,
+  DURATIONS,
+  LEVELS,
+  ROUTES,
+  TOPICS,
+} from "@/lib/constants";
 import type { EnglishLevel, SessionDuration } from "@/types";
 
 /**
@@ -16,7 +23,7 @@ import type { EnglishLevel, SessionDuration } from "@/types";
 export default function LauncherPage() {
   const [topic, setTopic] = useState(TOPICS[0].id);
   const [level, setLevel] = useState<EnglishLevel>("intermediate");
-  const [duration, setDuration] = useState<SessionDuration>(15);
+  const [duration, setDuration] = useState<SessionDuration>(DEFAULT_DURATION);
 
   return (
     <>
@@ -56,15 +63,10 @@ export default function LauncherPage() {
 
         <section>
           <SectionHeading title="長度" hint="通勤大約多久" />
-          <OptionGroup
-            name="duration"
+          <DurationWheel
+            options={DURATIONS}
             value={duration}
             onChange={setDuration}
-            columns={3}
-            options={DURATIONS.map((d) => ({
-              value: d,
-              label: `${d} 分`,
-            }))}
           />
         </section>
 

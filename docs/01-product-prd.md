@@ -48,7 +48,7 @@ As a repeat user, I want a dashboard of sessions, mistakes, and good phrases so 
 ### FR-1 Session Launch
 - Start a new session from mobile
 - Choose topic manually or accept a recommendation
-- Select a duration: 10 / 15 / 20 minutes
+- Select a duration: 5–60 minutes, in 5-minute steps
 - Select level: basic / intermediate / advanced
 
 ### FR-2 Live Voice Conversation
