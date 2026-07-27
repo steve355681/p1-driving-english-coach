@@ -5,7 +5,8 @@ export const metadata: Metadata = {
   title: "P1 Driving English Coach",
   description:
     "把通勤時間變成英文口說練習：出發前設定、行進間只用聲音、抵達後看回顧。",
-  icons: { icon: "/icon.svg" },
+  // The favicon comes from `app/icon.svg` via Next's file convention, which
+  // resolves the basePath correctly on GitHub Pages. Don't hardcode it here.
 };
 
 export const viewport: Viewport = {

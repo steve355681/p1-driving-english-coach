@@ -40,6 +40,31 @@ npm run lint       # eslint
 npm run typecheck  # tsc --noEmit
 ```
 
+## Deploying
+
+### GitHub Pages (current demo target)
+`.github/workflows/deploy-pages.yml` publishes on every push to `main`, and can
+also be run manually from the Actions tab. It builds with `GITHUB_PAGES=true`,
+which switches `next.config.ts` into static-export mode with the
+`/p1-driving-english-coach` basePath.
+
+Reproduce the Pages build locally:
+```bash
+GITHUB_PAGES=true npm run build          # writes ./out
+npx serve out                            # note: no basePath, so links 404 —
+                                         # only useful for eyeballing index.html
+```
+
+**Static export limits.** Pages serves files only, so there are no route
+handlers. Dynamic routes are pinned to the demo ids via `generateStaticParams`
+plus `dynamicParams = false`. Phase 4 needs a server route to mint OpenAI
+ephemeral tokens — the API key must never reach the browser — so the app moves
+to Vercel at that point.
+
+### Vercel (target from `docs/04`)
+No config needed: import the repo and deploy. Leave `GITHUB_PAGES` unset so the
+full Next.js feature set stays available.
+
 ## Routes
 | Route | Purpose | Chrome |
 | --- | --- | --- |

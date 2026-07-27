@@ -5,13 +5,24 @@ import { Card } from "@/components/ui/Card";
 import { PlaceholderNotice } from "@/components/ui/PlaceholderNotice";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ROUTES } from "@/lib/constants";
-import { placeholderReview } from "@/lib/placeholder-data";
+import { placeholderReview, placeholderSessions } from "@/lib/placeholder-data";
 
 const SEVERITY_TONE = {
   high: "warn",
   medium: "neutral",
   low: "neutral",
 } as const;
+
+/** See the note in `app/session/[id]/page.tsx`. */
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return [
+    // Ending the demo session navigates to `/review/demo`.
+    { id: "demo" },
+    ...placeholderSessions.map((session) => ({ id: session.id })),
+  ];
+}
 
 /**
  * Post-session review (FR-4). Compact on purpose: 3 corrections, a few better
