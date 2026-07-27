@@ -91,21 +91,30 @@ components/
   launcher/        launcher-specific inputs
   session/         driving-mode screen
   ui/              Button, Card, Badge, EmptyState, ...
-lib/               constants, helpers, placeholder data
-types/             domain types mirroring docs/04
+lib/
+  db/              session and review persistence helpers
+  supabase/        browser client, anonymous sign-in
+  ...              constants, helpers, placeholder data
+types/             domain types (index.ts) and DB row types (database.ts)
+supabase/          SQL migrations and setup notes
 docs/              product spec — read this before changing scope
 public/
 ```
 
 ## Current Status
-**Phase 0 and Phase 1 complete.** The app builds, runs, and every route renders.
+**Phases 0–2 complete.** The app builds, runs, and every route renders. The
+database schema, row types and persistence helpers exist.
 
-Not yet built: Supabase schema (Phase 2), session state machine and persistence
-(Phase 3), voice pipeline (Phase 4), AI review generation (Phase 5), real
-dashboard aggregation (Phase 6), deployment hardening (Phase 7).
+The UI is still on placeholder data — nothing calls `lib/db/*` yet. Wiring the
+launcher and live session to it is Phase 3. Screens rendering
+`lib/placeholder-data.ts` show a `示範資料` badge so the demo stays honest about
+what is not connected.
 
-Screens that render `lib/placeholder-data.ts` show a `示範資料` badge so the demo
-stays honest about what is not wired up.
+Not yet built: session state machine and persistence (Phase 3), voice pipeline
+(Phase 4), AI review generation (Phase 5), real dashboard aggregation
+(Phase 6), deployment hardening (Phase 7).
+
+See `supabase/README.md` to point a local build at a real project.
 
 ## Conventions
 - UI copy is Traditional Chinese; the speaking practice itself is English

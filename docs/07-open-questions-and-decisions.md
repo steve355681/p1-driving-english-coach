@@ -39,7 +39,15 @@ Recommendation: avoid fake precision. Prefer broad trend indicators before detai
 Recommendation: Chinese UI with English speaking experience, since that best fits the target user context.
 
 ### 5. Audio Retention Policy
-Need decision on whether raw audio is stored or only transcript / derived review is stored.
+**Decided (Phase 2): transcript only. Raw audio is never stored.**
+
+Why:
+- the review only needs text, so audio buys nothing for the core loop
+- it removes a class of privacy and retention questions entirely
+- no Supabase Storage bucket, no lifecycle policy, no deletion tooling
+
+The schema reflects this: `sessions.transcript` exists, and there is no audio
+column or bucket.
 
 ## Main Risks
 - mobile browser audio constraints

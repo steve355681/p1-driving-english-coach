@@ -10,10 +10,13 @@ import type { Session, SessionReview } from "@/types";
 
 export const IS_PLACEHOLDER_DATA = true;
 
+/** Stand-in owner id. Real rows get one from Supabase anonymous sign-in. */
+const DEMO_USER_ID = "00000000-0000-0000-0000-000000000000";
+
 export const placeholderSessions: Session[] = [
   {
     id: "demo-1",
-    userId: null,
+    userId: DEMO_USER_ID,
     topic: "Work & Career",
     durationMinutes: 15,
     level: "intermediate",
@@ -29,7 +32,7 @@ export const placeholderSessions: Session[] = [
   },
   {
     id: "demo-2",
-    userId: null,
+    userId: DEMO_USER_ID,
     topic: "Daily Life",
     durationMinutes: 10,
     level: "intermediate",
@@ -45,7 +48,7 @@ export const placeholderSessions: Session[] = [
   },
   {
     id: "demo-3",
-    userId: null,
+    userId: DEMO_USER_ID,
     topic: "Travel",
     durationMinutes: 20,
     level: "basic",

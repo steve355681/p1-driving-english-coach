@@ -72,7 +72,12 @@ export interface TranscriptTurn {
 
 export interface Session {
   id: string;
-  userId: string | null;
+  /**
+   * Never null, including in anonymous demo mode — Supabase anonymous sign-in
+   * issues a real auth user, which is what lets row level security protect a
+   * session's transcript.
+   */
+  userId: string;
   topic: string;
   durationMinutes: SessionDuration;
   level: EnglishLevel;
