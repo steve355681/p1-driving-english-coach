@@ -1,16 +1,8 @@
 import { LiveSessionScreen } from "@/components/session/LiveSessionScreen";
 
-/**
- * A static export can only ship paths known at build time, so the id is pinned
- * to the demo session. Next requires this flag to be a literal, so it applies
- * to every build, not just the Pages one — flip it to `true` in Phase 3 when
- * sessions become real records with unpredictable ids.
- */
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return [{ id: "demo" }];
-}
+// Any id is valid: Phase 3 creates sessions with real UUIDs. Nothing is
+// prerendered here, which is the whole reason this app is on Vercel rather
+// than a static host.
 
 /**
  * Driving mode lives outside the `(main)` route group so it never picks up the

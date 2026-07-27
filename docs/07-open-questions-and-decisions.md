@@ -25,9 +25,42 @@ Why:
 - easier to build and validate
 - better daily ritual design
 
+### 4. Deployed App Talks to the Real Database
+Decision: the deployed app connects to Supabase. Anonymous visitors get real,
+RLS-isolated sessions.
+
+This reverses an earlier call to keep the public deployment on placeholder
+data. That call assumed the deployment was a demo only. It is not: the owner
+uses it on a phone during an actual commute, and a deployment that cannot save
+a session makes the review and dashboard — half the product — meaningless.
+
+The original worry was that a public anon key plus open anonymous sign-in lets
+anyone write to the project. That is true and accepted:
+- row level security confines each visitor to their own rows
+- the data is text, against a 500 MB free tier
+- letting a visitor actually try the product beats showing them fake data
+
+### 5. Hosting: Vercel, not GitHub Pages
+Decision: deploy on Vercel.
+
+GitHub Pages served the Phase 1 skeleton, but a static export can only serve
+paths known at build time. Once sessions are real records, `/session/<uuid>`
+404s. Vercel was already the target in `docs/04`, needs no code changes, and
+Phase 4 requires a server route regardless — an OpenAI key cannot ship to the
+browser.
+
 ## Open Questions
 ### 1. Anonymous Demo vs Auth First
-Recommendation: start with anonymous demo mode, then add auth.
+Decision: anonymous first, **auth required before Phase 4 ships**.
+
+Anonymous is right for Phase 3, where the worst a visitor can do is store some
+text. It stops being right the moment voice is connected: every visitor who
+starts a session spends real money against the project's OpenAI key, with no
+upper bound. Phase 4 must not ship an ungated voice path.
+
+The gate does not have to be full accounts — restricting voice to a known
+identity, or a per-user session cap, would both do. But something has to exist
+before the first token is spent.
 
 ### 2. Level System
 Recommendation: use `basic / intermediate / advanced` first, not full CEFR calibration.

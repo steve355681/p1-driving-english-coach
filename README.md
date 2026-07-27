@@ -42,28 +42,26 @@ npm run typecheck  # tsc --noEmit
 
 ## Deploying
 
-### GitHub Pages (current demo target)
-`.github/workflows/deploy-pages.yml` publishes on every push to `main`, and can
-also be run manually from the Actions tab. It builds with `GITHUB_PAGES=true`,
-which switches `next.config.ts` into static-export mode with the
-`/p1-driving-english-coach` basePath.
+Vercel. Import the repo, no build configuration needed.
 
-Reproduce the Pages build locally:
-```bash
-GITHUB_PAGES=true npm run build          # writes ./out
-npx serve out                            # note: no basePath, so links 404 —
-                                         # only useful for eyeballing index.html
+Set both environment variables in the Vercel project, for every environment:
 ```
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
+Without them the deployment silently falls back to placeholder data — it will
+look fine and save nothing.
 
-**Static export limits.** Pages serves files only, so there are no route
-handlers. Dynamic routes are pinned to the demo ids via `generateStaticParams`
-plus `dynamicParams = false`. Phase 4 needs a server route to mint OpenAI
-ephemeral tokens — the API key must never reach the browser — so the app moves
-to Vercel at that point.
+The app was briefly on GitHub Pages. It moved because a static export can only
+serve paths known at build time, so `/session/<uuid>` 404s once sessions are
+real records. See `docs/07` for that decision and for the deployment's
+Supabase access.
 
-### Vercel (target from `docs/04`)
-No config needed: import the repo and deploy. Leave `GITHUB_PAGES` unset so the
-full Next.js feature set stays available.
+`.github/workflows/keep-supabase-awake.yml` queries the database every three
+days, because Supabase pauses a free-tier project after 7 days of inactivity.
+It needs `SUPABASE_URL` and `SUPABASE_ANON_KEY` as repository secrets. Note
+that GitHub disables scheduled workflows in a repository with no activity for
+60 days.
 
 ## Routes
 | Route | Purpose | Chrome |

@@ -1,0 +1,40 @@
+name: Keep Supabase awake
+
+# Supabase pauses a free-tier project after 7 days with no database activity,
+# which would take the app offline between commutes. This runs every 3 days
+# rather than weekly: GitHub's scheduled runs can be delayed by a while under
+# load, and a weekly job that slips twice would miss the window.
+on:
+  schedule:
+    - cron: "0 6 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query the database
+        env:
+          URL: ${{ secrets.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "Set the SUPABASE_URL and SUPABASE_ANON_KEY repository secrets."
+            exit 1
+          fi
+
+          code=$(curl -sS -o /tmp/body -w '%{http_code}' \
+            "$URL/rest/v1/sessions?select=id&limit=1" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY")
+
+          echo "HTTP $code -- $(cat /tmp/body)"
+
+          # An empty array is the expected result: row level security hides
+          # every row from an unauthenticated caller. The query still reaches
+          # Postgres, which is what resets the inactivity timer — a request
+          # that fails auth before touching the database would not.
+          if [ "$code" != "200" ]; then
+            echo "Unexpected status. The project may already be paused, or the secrets may be wrong."
+            exit 1
+          fi
