@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs"
+    "check:supabase": "node --env-file-if-exists=.env.local scripts/check-supabase.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",
