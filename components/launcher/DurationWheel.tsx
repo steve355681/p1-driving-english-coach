@@ -4,12 +4,17 @@ import { useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import type { SessionDuration } from "@/types";
 
-const ITEM_HEIGHT = 56;
+const ITEM_HEIGHT = 72;
 /** Odd, so exactly one row sits in the centre slot. */
-const VISIBLE_ROWS = 5;
+const VISIBLE_ROWS = 3;
 
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ROWS;
 const EDGE_PADDING = (WHEEL_HEIGHT - ITEM_HEIGHT) / 2;
+
+/** Fade everything outside the centre row. Derived from the constants above so
+ *  changing the row count can't leave the gradient cutting into the centre. */
+const FADE_TOP = (EDGE_PADDING / WHEEL_HEIGHT) * 100;
+const MASK = `linear-gradient(to bottom, transparent, black ${FADE_TOP}%, black ${100 - FADE_TOP}%, transparent)`;
 
 /** How long scrolling must be idle before we treat the wheel as settled.
  *  `scrollend` would be cleaner but Safari only shipped it recently. */
@@ -97,10 +102,13 @@ export function DurationWheel({
           "h-full snap-y snap-mandatory overflow-y-scroll overscroll-contain",
           // Hide the scrollbar — it reads as chrome on a picker.
           "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          // Fade the rows away from the centre so it reads as a wheel.
-          "[mask-image:linear-gradient(to_bottom,transparent,black_28%,black_72%,transparent)]",
         )}
-        style={{ paddingTop: EDGE_PADDING, paddingBottom: EDGE_PADDING }}
+        style={{
+          paddingTop: EDGE_PADDING,
+          paddingBottom: EDGE_PADDING,
+          maskImage: MASK,
+          WebkitMaskImage: MASK,
+        }}
       >
         {options.map((option) => {
           const selected = option === value;
@@ -112,24 +120,29 @@ export function DurationWheel({
               aria-selected={selected}
               aria-label={`${option} 分鐘`}
               onClick={() => onChange(option)}
-              className="flex w-full snap-center items-baseline justify-center gap-1.5 focus-visible:outline-none"
+              className="flex w-full snap-center items-center justify-center focus-visible:outline-none"
               style={{ height: ITEM_HEIGHT }}
             >
-              <span
-                className={cn(
-                  "text-3xl tabular-nums transition-colors",
-                  selected ? "font-semibold text-brand" : "text-muted",
-                )}
-              >
-                {option}
-              </span>
-              <span
-                className={cn(
-                  "text-sm transition-colors",
-                  selected ? "text-brand" : "text-muted",
-                )}
-              >
-                分
+              {/* Inner row does the baseline alignment; the button centres it.
+                  `items-baseline` on the button itself would pin the text to
+                  the top of the row and leave it off-centre in the slot. */}
+              <span className="flex items-baseline gap-1.5">
+                <span
+                  className={cn(
+                    "text-4xl leading-none tabular-nums transition-colors",
+                    selected ? "font-semibold text-brand" : "text-muted",
+                  )}
+                >
+                  {option}
+                </span>
+                <span
+                  className={cn(
+                    "text-base leading-none transition-colors",
+                    selected ? "text-brand" : "text-muted",
+                  )}
+                >
+                  分
+                </span>
               </span>
             </button>
           );
