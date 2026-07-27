@@ -1,12 +1,12 @@
-import { LiveSessionScreen } from "@/components/session/LiveSessionScreen";
-
-// Any id is valid: Phase 3 creates sessions with real UUIDs. Nothing is
-// prerendered here, which is the whole reason this app is on Vercel rather
-// than a static host.
+import { SessionLoader } from "@/components/session/SessionLoader";
 
 /**
  * Driving mode lives outside the `(main)` route group so it never picks up the
  * bottom nav or any other chrome.
+ *
+ * Any id is valid: sessions are created with real UUIDs. The record is loaded
+ * in the browser because the anonymous auth session lives there — a server
+ * component has no user to read rows as.
  */
 export default async function SessionPage({
   params,
@@ -16,7 +16,7 @@ export default async function SessionPage({
   const { id } = await params;
   return (
     <main className="mx-auto w-full max-w-md">
-      <LiveSessionScreen sessionId={id} />
+      <SessionLoader sessionId={id} />
     </main>
   );
 }
