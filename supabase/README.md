@@ -27,6 +27,17 @@ Schema for P1 Driving English Coach. Mirrors `docs/04-technical-architecture.md`
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    ```
 
+Then check all three steps landed:
+
+```bash
+npm run check:supabase
+```
+
+It signs in anonymously, creates a throwaway session, confirms a second
+anonymous user cannot read it, and deletes it again — so it catches a missing
+migration, a disabled Anonymous provider, and broken RLS separately rather than
+as one opaque error later.
+
 The app runs fine without any of this — it stays on placeholder data and shows
 a 示範資料 badge. See `isSupabaseConfigured()` in `lib/supabase/client.ts`.
 
