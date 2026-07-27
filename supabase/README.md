@@ -53,6 +53,26 @@ directly with the anon key, so a missing policy is a data leak, not a bug that
 surfaces as an error. If you add a table, enable RLS on it in the same
 migration.
 
+## Testing the schema
+
+`tests/rls.sql` exercises the policies, constraints, triggers and cascades
+against a plain Postgres — no Supabase project needed. It stubs the parts of
+the `auth` schema the migration depends on, then applies the migration.
+
+Run it against a **fresh** database (the migration is not idempotent):
+
+```bash
+createdb schema_test
+psql -d schema_test -f tests/rls.sql
+```
+
+Expect exactly 8 errors, each one directly under a line marked
+`expect reject` / `expect RLS error`. Any other error is a real failure. The
+counted assertions print their expected value in the label.
+
+Worth re-running on any change to a table or policy: a missing policy does not
+raise an error, it just returns other people's rows.
+
 ## Keeping types in sync
 
 `types/database.ts` is hand-written and must match these migrations. Once the

@@ -30,6 +30,10 @@ jobs:
 
       - run: npm ci
 
+      # No NEXT_PUBLIC_SUPABASE_* here, on purpose: the public demo stays on
+      # placeholder data. Adding them would let any visitor write rows to the
+      # real project, since the anon key ships to the browser and anonymous
+      # sign-in is open. Real data is a local-development-only thing for now.
       - name: Build static export
         run: npm run build
         env:
