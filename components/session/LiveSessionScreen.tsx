@@ -10,6 +10,8 @@ import {
   persistedStatus,
   type SessionEvent,
 } from "@/lib/session/machine";
+import { connectVoice, type VoiceConnection } from "@/lib/voice/connection";
+import { getAccessToken } from "@/lib/supabase/auth";
 import {
   ROUTES,
   SESSION_STATUS_COLOR,
@@ -26,8 +28,10 @@ import type { Session, SessionStatus } from "@/types";
  * - no paragraphs, no corrections, no navigation
  * - every tap target is at least 7rem tall
  *
- * Phase 4 replaces the fake connect below with a real voice connection and
- * dispatches COACH_SPEAKING / COACH_DONE as the coach's audio starts and stops.
+ * The connection starts on a tap rather than on mount. Safari refuses both
+ * microphone access and audio playback without a user gesture, so an automatic
+ * connect would fail on exactly the device this product is for. The tap happens
+ * while parked, which is where the setup is supposed to happen anyway.
  */
 export function LiveSessionScreen({
   session,
@@ -40,9 +44,10 @@ export function LiveSessionScreen({
   const [status, setStatus] = useState<SessionStatus>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  // What we last wrote, so a status the database already has is not written
-  // again. Purely an optimisation; the value is never read for logic.
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const voiceRef = useRef<VoiceConnection | null>(null);
   const lastPersisted = useRef<SessionStatus | null>(null);
 
   const send = useCallback(
@@ -66,13 +71,11 @@ export function LiveSessionScreen({
     [placeholder, session.id],
   );
 
-  // Start the session on mount. Without a voice pipeline there is nothing to
-  // wait for, so `CONNECTED` follows immediately — Phase 4 fires it when the
-  // audio channel is actually open, and FAIL when it is not.
+  // Releasing the microphone on unmount matters: leaving it open keeps the
+  // recording indicator lit and the mic live after the user has left.
   useEffect(() => {
-    send({ type: "CONNECT" });
-    send({ type: "CONNECTED" });
-  }, [send]);
+    return () => voiceRef.current?.close();
+  }, []);
 
   useEffect(() => {
     if (!isRunning(status)) return;
@@ -80,14 +83,69 @@ export function LiveSessionScreen({
     return () => clearInterval(timer);
   }, [status]);
 
-  const { label, hint } = SESSION_STATUS_LABELS[status];
+  async function connect() {
+    setError(null);
+    setNotice(null);
+    send({ type: "CONNECT" });
+
+    if (placeholder) {
+      // No database means no credential to fetch; run the shell so the flow is
+      // still walkable.
+      setNotice("尚未連上資料庫，語音沒有實際連線。");
+      send({ type: "CONNECTED" });
+      return;
+    }
+
+    try {
+      const accessToken = await getAccessToken();
+      const audioElement = audioRef.current;
+      if (!audioElement) throw new Error("音訊元件尚未就緒。");
+
+      voiceRef.current = await connectVoice({
+        sessionId: session.id,
+        requestedSeconds: session.durationMinutes * 60,
+        accessToken,
+        audioElement,
+        onEvent: (event) => {
+          switch (event.type) {
+            case "connected":
+              send({ type: "CONNECTED" });
+              break;
+            case "coach-speaking":
+              send({ type: "COACH_SPEAKING" });
+              break;
+            case "coach-done":
+              send({ type: "COACH_DONE" });
+              break;
+            case "error":
+              setError(event.error.message);
+              break;
+            case "closed":
+              break;
+          }
+        },
+      });
+
+      // A trial grant is shorter than the chosen duration; say so once, before
+      // the drive, rather than cutting out unexplained later.
+      const granted = voiceRef.current.grantedSeconds;
+      if (granted < session.durationMinutes * 60) {
+        setNotice(`本次可練習 ${Math.round(granted / 60)} 分鐘。`);
+      }
+    } catch (cause) {
+      setError(toError(cause).message);
+      send({ type: "FAIL" });
+    }
+  }
 
   async function end() {
+    voiceRef.current?.close();
+    voiceRef.current = null;
     send({ type: "END" });
 
     try {
       if (!placeholder) {
-        // Transcript is empty until Phase 4 captures one.
+        // Transcript capture lands in Phase 4d.
         await db.completeSession(session.id, []);
       }
       send({ type: "ENDED" });
@@ -98,8 +156,14 @@ export function LiveSessionScreen({
     }
   }
 
+  const { label, hint } = SESSION_STATUS_LABELS[status];
+  const idle = status === "idle";
+  const failed = status === "error";
+
   return (
     <div className="flex min-h-dvh flex-col justify-between px-5 pb-safe pt-safe">
+      <audio ref={audioRef} autoPlay className="hidden" />
+
       <div className="flex items-center justify-between text-sm text-muted">
         <span>{session.topic}</span>
         <span aria-label="已進行時間" className="tabular-nums">
@@ -118,16 +182,26 @@ export function LiveSessionScreen({
             isRunning(status) && "animate-pulse",
           )}
         >
-          <span className="text-3xl font-semibold">{label}</span>
+          <span className="text-3xl font-semibold">
+            {idle ? "準備好了" : label}
+          </span>
         </div>
-        <p className="text-base text-muted">{hint}</p>
+        <p className="text-base text-muted">{idle ? "點下方開始" : hint}</p>
+
+        {notice ? (
+          <p className="px-6 text-center text-sm text-state-paused">{notice}</p>
+        ) : null}
         {error ? (
           <p className="px-6 text-center text-sm text-state-error">{error}</p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-3">
-        {status === "paused" ? (
+        {idle || failed ? (
+          <Button size="driving" fullWidth onClick={connect}>
+            {failed ? "再試一次" : "開始對話"}
+          </Button>
+        ) : status === "paused" ? (
           <Button
             size="driving"
             fullWidth

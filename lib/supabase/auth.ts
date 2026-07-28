@@ -81,6 +81,23 @@ async function signInWithEmail(email: string) {
   if (error) throw error;
 }
 
+/**
+ * The caller's Supabase access token, for authenticating requests to our own
+ * API routes. Creates an anonymous session if there isn't one yet, so a
+ * first-time visitor can still reach the voice gate and be told about the
+ * trial limits rather than a login error.
+ */
+export async function getAccessToken(): Promise<string> {
+  const supabase = requireSupabase();
+  await ensureAuthUserId();
+
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("尚未建立登入狀態。");
+
+  return token;
+}
+
 export async function signOut() {
   const supabase = requireSupabase();
   const { error } = await supabase.auth.signOut();
