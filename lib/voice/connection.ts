@@ -102,7 +102,18 @@ export async function connectVoice(input: {
 
   let microphone: MediaStream;
   try {
-    microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
+    microphone = await navigator.mediaDevices.getUserMedia({
+      // Stated explicitly rather than left to `audio: true`. This is used in a
+      // moving car, on speakerphone, with no headset — the coach's voice comes
+      // out of the same cabin the microphone is in, and there is constant road
+      // noise. Browsers usually default these on, but the one place they are
+      // load-bearing is the one place we should not be relying on a default.
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
   } catch {
     // Denied, dismissed, or no input device — all the same to the driver.
     throw new Error("需要麥克風權限才能練習口說。請在瀏覽器設定中允許，再試一次。");
