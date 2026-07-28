@@ -78,6 +78,26 @@ intermediate→B1, advanced→C1) rather than dropped.
 ### 3. Scoring Strategy
 Recommendation: avoid fake precision. Prefer broad trend indicators before detailed numeric scoring.
 
+**Decided (Phase 5): review generation writes no scores.** The
+`sessions.score_*` columns stay null. A 0–100 number invented by a model from a
+single imperfect transcript is exactly the fake precision above, and once it is
+on screen the learner will read it as a measurement. Phase 6 needs something to
+show a trend from; recurring error types and counts are real and already in the
+data.
+
+**Decided (Phase 5): no pronunciation feedback.** The review reads a text
+transcript. When speech recognition garbles a word there is no way to tell a
+mispronunciation from a transcription error, so `pronunciation` is not offered
+to the model as a correction type. It stays in `FeedbackType` because the column
+and the schema are shared with any future path that does see audio.
+
+**Decided (Phase 5): the review is generated on first view, not at session
+end.** Generating at the end would hold the driver on a spinner at the moment
+they most want to put the phone down, and would pay for reviews nobody opens.
+One generation per session: if a summary already exists the endpoint returns
+without calling the model, which caps the cost and makes retries free. The
+trade-off is that a poor-but-valid review cannot be regenerated from the UI.
+
 ### 4. Language of UI
 Recommendation: Chinese UI with English speaking experience, since that best fits the target user context.
 
