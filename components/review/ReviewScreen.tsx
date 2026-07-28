@@ -71,7 +71,11 @@ export function ReviewScreen({ sessionId }: { sessionId: string }) {
         {isEmpty ? (
           <EmptyState
             title="這次練習還沒有回顧內容"
-            description="練習已經記錄下來了，但語音與 AI 回顧還沒接上，所以沒有逐字稿可以分析。"
+            description={
+              review.transcriptTurns > 0
+                ? `對話已經記錄下來了（${review.transcriptTurns} 段），但 AI 回顧還沒接上，所以還沒有摘要和修正建議。`
+                : "這次沒有錄到對話內容，所以沒有東西可以回顧。"
+            }
           />
         ) : (
           <>

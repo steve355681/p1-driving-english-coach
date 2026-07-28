@@ -55,6 +55,13 @@ export function LiveSessionScreen({
   const lastPersisted = useRef<SessionStatus | null>(null);
   const transcriptRef = useRef<TranscriptLog | null>(null);
   const savingRef = useRef(false);
+  /**
+   * Wall clock, not the elapsed timer. The credential expires a fixed number
+   * of seconds after it was minted regardless of pauses, so a deadline that
+   * paused with the UI would outlive the connection it belongs to.
+   */
+  const deadlineRef = useRef<number | null>(null);
+  const endingRef = useRef(false);
 
   /**
    * Writes the whole transcript, not a delta. Sending the full array makes a
@@ -84,7 +91,12 @@ export function LiveSessionScreen({
     (event: SessionEvent) => {
       setStatus((current) => {
         const next = nextStatus(current, event);
-        if (next === current || placeholder) return next;
+        if (next === current) return next;
+
+        // Pausing has to stop the audio, not just the label.
+        voiceRef.current?.setMicrophoneEnabled(next !== "paused");
+
+        if (placeholder) return next;
 
         const toWrite = persistedStatus(next);
         if (toWrite !== lastPersisted.current) {
@@ -122,6 +134,31 @@ export function LiveSessionScreen({
     }, 5000);
     return () => clearInterval(timer);
   }, [status, flushTranscript]);
+
+  // Ends the session when the granted time runs out. The driver cannot be
+  // expected to watch a clock and tap a button, and without this the
+  // credential simply expires mid-sentence and the session is left open in the
+  // database with no ending.
+  useEffect(() => {
+    if (status !== "listening" && status !== "ai_speaking" && status !== "paused") {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const deadline = deadlineRef.current;
+      if (deadline === null) return;
+
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) {
+        void endSession("時間到，已為你結束這次練習。");
+      } else if (remaining <= 60_000) {
+        setNotice("剩下不到 1 分鐘。");
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   async function connect() {
     setError(null);
@@ -176,6 +213,7 @@ export function LiveSessionScreen({
       // A trial grant is shorter than the chosen duration; say so once, before
       // the drive, rather than cutting out unexplained later.
       const granted = voiceRef.current.grantedSeconds;
+      deadlineRef.current = Date.now() + granted * 1000;
       const notes: string[] = [];
       if (granted < session.durationMinutes * 60) {
         notes.push(`本次可練習 ${Math.round(granted / 60)} 分鐘。`);
@@ -190,7 +228,14 @@ export function LiveSessionScreen({
     }
   }
 
-  async function end() {
+  async function endSession(reason?: string) {
+    // The deadline and a tap can arrive together; ending twice would push the
+    // review route twice and race two writes.
+    if (endingRef.current) return;
+    endingRef.current = true;
+
+    deadlineRef.current = null;
+    if (reason) setNotice(reason);
     voiceRef.current?.close();
     voiceRef.current = null;
     send({ type: "END" });
@@ -204,6 +249,7 @@ export function LiveSessionScreen({
       send({ type: "ENDED" });
       router.push(ROUTES.review(session.id));
     } catch (cause) {
+      endingRef.current = false;
       send({ type: "FAIL" });
       setError(toError(cause).message);
     }
@@ -273,7 +319,7 @@ export function LiveSessionScreen({
             暫停
           </Button>
         )}
-        <Button size="lg" variant="ghost" fullWidth onClick={end}>
+        <Button size="lg" variant="ghost" fullWidth onClick={() => endSession()}>
           結束並查看回顧
         </Button>
       </div>

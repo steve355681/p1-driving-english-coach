@@ -147,6 +147,7 @@ export const placeholderReview: SessionReview = {
     },
   ],
   nextRecommendation: "下次練習用過去式描述「上週做了什麼」，主題選 Work & Career。",
+  transcriptTurns: 0,
 };
 
 /** Recurring error themes for the dashboard (Phase 6 will derive these for real). */

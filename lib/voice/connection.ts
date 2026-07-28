@@ -27,6 +27,13 @@ export interface VoiceGrant {
 
 export interface VoiceConnection extends VoiceGrant {
   close: () => void;
+  /**
+   * Stops sending microphone audio. Pausing has to actually stop the audio
+   * leaving the car: a pause that only changed the label would keep streaming
+   * a parked conversation to a metered API, and keep the microphone live while
+   * the user believes it is off.
+   */
+  setMicrophoneEnabled: (enabled: boolean) => void;
   /** False when OpenAI refused the transcription config; see the API route. */
   transcription: boolean;
 }
@@ -225,6 +232,11 @@ export async function connectVoice(input: {
 
     return {
       close,
+      setMicrophoneEnabled: (enabled) => {
+        microphone.getAudioTracks().forEach((track) => {
+          track.enabled = enabled;
+        });
+      },
       grantedSeconds: grant.grantedSeconds,
       tier: grant.tier,
       transcription: grant.transcription !== false,

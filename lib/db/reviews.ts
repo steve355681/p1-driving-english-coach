@@ -69,6 +69,7 @@ export async function getSessionReview(
     alternatives: row.alternatives ?? [],
     vocabulary: (vocabularyResult.data ?? []).map(toVocabularyItem),
     nextRecommendation: row.next_recommendation ?? "",
+    transcriptTurns: session.transcript.length,
   };
 }
 

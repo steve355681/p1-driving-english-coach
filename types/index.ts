@@ -135,4 +135,6 @@ export interface SessionReview {
   alternatives: string[];
   vocabulary: VocabularyItem[];
   nextRecommendation: string;
+  /** Lets the empty state distinguish "nothing was said" from "not analysed yet". */
+  transcriptTurns: number;
 }
