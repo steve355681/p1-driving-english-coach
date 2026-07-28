@@ -6,7 +6,8 @@
  * against; the Supabase schema lands in Phase 2 and should stay in sync.
  */
 
-export type EnglishLevel = "basic" | "intermediate" | "advanced";
+/** CEFR. The learner picks their own; nothing here assesses them. */
+export type EnglishLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 
 /**
  * Minutes, in 5-minute steps from 5 to 60. Kept as a closed union so an

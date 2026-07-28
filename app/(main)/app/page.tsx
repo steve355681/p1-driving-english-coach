@@ -12,6 +12,7 @@ import { startSession } from "@/lib/data";
 import { toError } from "@/lib/utils";
 import {
   DEFAULT_DURATION,
+  DEFAULT_LEVEL,
   DURATIONS,
   LEVELS,
   ROUTES,
@@ -23,7 +24,7 @@ import type { EnglishLevel, SessionDuration } from "@/types";
 export default function LauncherPage() {
   const router = useRouter();
   const [topic, setTopic] = useState(TOPICS[0].id);
-  const [level, setLevel] = useState<EnglishLevel>("intermediate");
+  const [level, setLevel] = useState<EnglishLevel>(DEFAULT_LEVEL);
   const [duration, setDuration] = useState<SessionDuration>(DEFAULT_DURATION);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);

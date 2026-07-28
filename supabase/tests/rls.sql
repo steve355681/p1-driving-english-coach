@@ -42,6 +42,7 @@ grant usage on schema public to anon, authenticated;
 \ir ../migrations/20260727100000_init.sql
 \ir ../migrations/20260728090000_voice_entitlements.sql
 \ir ../migrations/20260728120000_voice_usage.sql
+\ir ../migrations/20260728150000_cefr_levels.sql
 
 -- Supabase grants these to anon/authenticated out of the box; the stub has to
 -- match, or every statement below fails on table permissions before RLS is
@@ -65,7 +66,7 @@ set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 
 \echo '--- T2: A creates a session'
 insert into public.sessions (user_id, topic, duration_minutes, level)
-values ('11111111-1111-1111-1111-111111111111', 'Work & Career', 15, 'intermediate');
+values ('11111111-1111-1111-1111-111111111111', 'Work & Career', 15, 'B1');
 
 insert into public.feedback_items (session_id, type, original_text, improved_text, explanation)
 select id, 'grammar', 'I am go', 'I go', 'present simple' from public.sessions limit 1;
@@ -76,7 +77,7 @@ select count(*) as a_feedback from public.feedback_items;
 
 \echo '--- T4: A cannot create a session owned by B (expect RLS error)'
 insert into public.sessions (user_id, topic, duration_minutes, level)
-values ('22222222-2222-2222-2222-222222222222', 'Hijack', 15, 'basic');
+values ('22222222-2222-2222-2222-222222222222', 'Hijack', 15, 'A2');
 
 set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 
@@ -106,36 +107,36 @@ set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 
 \echo '--- C1: duration off the 5-minute grid (7) -- expect reject'
 insert into public.sessions (user_id, topic, duration_minutes, level)
-values ('11111111-1111-1111-1111-111111111111','x',7,'basic');
+values ('11111111-1111-1111-1111-111111111111','x',7,'A2');
 
 \echo '--- C2: duration over the max (65) -- expect reject'
 insert into public.sessions (user_id, topic, duration_minutes, level)
-values ('11111111-1111-1111-1111-111111111111','x',65,'basic');
+values ('11111111-1111-1111-1111-111111111111','x',65,'A2');
 
 \echo '--- C3: both ends of the grid (5, 60) -- expect accept'
 insert into public.sessions (user_id, topic, duration_minutes, level)
-values ('11111111-1111-1111-1111-111111111111','x',5,'basic'),
-       ('11111111-1111-1111-1111-111111111111','x',60,'advanced');
+values ('11111111-1111-1111-1111-111111111111','x',5,'A2'),
+       ('11111111-1111-1111-1111-111111111111','x',60,'C1');
 
 \echo '--- C4: unknown level -- expect reject'
 insert into public.sessions (user_id, topic, duration_minutes, level)
-values ('11111111-1111-1111-1111-111111111111','x',15,'fluent');
+values ('11111111-1111-1111-1111-111111111111','x',15,'D9');
 
 \echo '--- C5: unknown status -- expect reject'
 insert into public.sessions (user_id, topic, duration_minutes, level, status)
-values ('11111111-1111-1111-1111-111111111111','x',15,'basic','driving');
+values ('11111111-1111-1111-1111-111111111111','x',15,'A2','driving');
 
 \echo '--- C6: score out of range (101) -- expect reject'
 insert into public.sessions (user_id, topic, duration_minutes, level, score_overall)
-values ('11111111-1111-1111-1111-111111111111','x',15,'basic',101);
+values ('11111111-1111-1111-1111-111111111111','x',15,'A2',101);
 
 \echo '--- C7: ended_at before started_at -- expect reject'
 insert into public.sessions (user_id, topic, duration_minutes, level, started_at, ended_at)
-values ('11111111-1111-1111-1111-111111111111','x',15,'basic', now(), now() - interval '1 hour');
+values ('11111111-1111-1111-1111-111111111111','x',15,'A2', now(), now() - interval '1 hour');
 
 \echo '--- C8: transcript must be an array -- expect reject'
 insert into public.sessions (user_id, topic, duration_minutes, level, transcript)
-values ('11111111-1111-1111-1111-111111111111','x',15,'basic','{"a":1}'::jsonb);
+values ('11111111-1111-1111-1111-111111111111','x',15,'A2','{"a":1}'::jsonb);
 
 \echo '--- C9: updated_at trigger fires (expect t)'
 update public.sessions set summary = 'touched' where duration_minutes = 5;

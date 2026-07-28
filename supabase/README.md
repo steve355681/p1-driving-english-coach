@@ -75,11 +75,16 @@ Run it against a **fresh** database (the migration is not idempotent):
 ```bash
 createdb schema_test
 psql -d schema_test -f tests/rls.sql
+
+# The CEFR migration rewrites existing rows, so it has its own test for what
+# happens to data that is already there.
+createdb cefr_test
+psql -d cefr_test -f tests/cefr-migration.sql
 ```
 
-Expect exactly 8 errors, each one directly under a line marked
-`expect reject` / `expect RLS error`. Any other error is a real failure. The
-counted assertions print their expected value in the label.
+Every error printed should sit directly under a line marked `expect reject` or
+`expect RLS error`; anything else is a real failure. The counted assertions
+print their expected value in the label, so they can be checked by eye.
 
 Worth re-running on any change to a table or policy: a missing policy does not
 raise an error, it just returns other people's rows.

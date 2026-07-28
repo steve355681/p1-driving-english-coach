@@ -63,7 +63,17 @@ identity, or a per-user session cap, would both do. But something has to exist
 before the first token is spent.
 
 ### 2. Level System
-Recommendation: use `basic / intermediate / advanced` first, not full CEFR calibration.
+**Decided: CEFR A1–C2.** Reverses the earlier recommendation to start with
+`basic / intermediate / advanced`.
+
+That recommendation was about avoiding calibration work — but nothing here
+calibrates anyone. The learner picks their own level, and it only shapes how
+the coach speaks. Three bands turned out too coarse for that: "intermediate"
+covers both a learner who needs every question rephrased and one who can
+defend a position, and the coach cannot serve both from one instruction.
+
+Existing rows were mapped to the middle of each band (basic→A2,
+intermediate→B1, advanced→C1) rather than dropped.
 
 ### 3. Scoring Strategy
 Recommendation: avoid fake precision. Prefer broad trend indicators before detailed numeric scoring.

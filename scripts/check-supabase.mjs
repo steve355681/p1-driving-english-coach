@@ -88,7 +88,7 @@ const insert = await clientA
     user_id: userA,
     topic: "__preflight__",
     duration_minutes: 15,
-    level: "intermediate",
+    level: "B1",
   })
   .select()
   .single();

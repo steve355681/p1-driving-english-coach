@@ -23,12 +23,19 @@ export const TOPICS: Topic[] = [
   { id: "free-talk", label: "Free Talk", hint: "由教練帶話題" },
 ];
 
+/** CEFR labels alone mean little to most learners, so each carries a
+ *  plain-language hint about how the coach will actually behave. */
 export const LEVELS: Array<{ value: EnglishLevel; label: string; hint: string }> =
   [
-    { value: "basic", label: "Basic", hint: "簡單句、慢速、多引導" },
-    { value: "intermediate", label: "Intermediate", hint: "一般語速、會追問" },
-    { value: "advanced", label: "Advanced", hint: "接近母語者速度、少提示" },
+    { value: "A1", label: "A1 入門", hint: "極短句、很慢、大量引導" },
+    { value: "A2", label: "A2 基礎", hint: "簡單句、放慢、常給提示" },
+    { value: "B1", label: "B1 中級", hint: "一般語速、會追問理由" },
+    { value: "B2", label: "B2 中高級", hint: "討論抽象話題、要你論述" },
+    { value: "C1", label: "C1 高級", hint: "接近母語速度、少遷就" },
+    { value: "C2", label: "C2 精通", hint: "母語速度、要求精準用字" },
   ];
+
+export const DEFAULT_LEVEL: EnglishLevel = "B1";
 
 /** 5 → 60 minutes in 5-minute steps. Must stay in sync with `SessionDuration`. */
 export const DURATIONS: SessionDuration[] = Array.from(

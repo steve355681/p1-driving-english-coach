@@ -8,16 +8,39 @@ import type { EnglishLevel } from "@/types";
  */
 export const REALTIME_MODEL = "gpt-realtime-2.1-mini";
 
+/**
+ * How the coach speaks at each CEFR level.
+ *
+ * Written as instructions about the coach's own output, not descriptions of
+ * the learner. "The learner is B1" tells a model very little; "ask for reasons
+ * and keep your turns under two sentences" changes what it actually says.
+ */
 const LEVEL_GUIDANCE: Record<EnglishLevel, string> = {
-  basic:
-    "Speak slowly with short, simple sentences. Ask one question at a time. " +
-    "If the learner struggles, offer them the words they need.",
-  intermediate:
-    "Speak at a normal conversational pace. Ask follow-up questions that push " +
-    "the learner to explain and give reasons.",
-  advanced:
-    "Speak at close to native pace with natural idiom. Challenge vague answers " +
-    "and ask for precision.",
+  A1:
+    "The learner is a beginner. Speak very slowly, in sentences of five or six " +
+    "words, using only the most common vocabulary and the present tense. Ask " +
+    "yes/no or either/or questions. Give them the words they need before they " +
+    "have to search. Accept one-word answers as success.",
+  A2:
+    "Speak slowly in short, simple sentences. Stay in the present and simple " +
+    "past. Ask about familiar, concrete things — routine, food, weekends. " +
+    "Offer a phrase whenever they hesitate, and let them repeat it back.",
+  B1:
+    "Speak at a normal conversational pace with everyday vocabulary. Ask " +
+    "follow-up questions that make them explain and give reasons. Keep your " +
+    "own turns to two sentences so they do most of the talking.",
+  B2:
+    "Speak at a natural pace and raise more abstract angles — trade-offs, " +
+    "causes, opinions they have to defend. Do not simplify unless they ask. " +
+    "Push back gently when an answer is vague.",
+  C1:
+    "Speak at close to native pace, with idiom and natural reductions. Do not " +
+    "accommodate. Challenge loose reasoning and ask for the precise word when " +
+    "they reach for an approximation.",
+  C2:
+    "Speak exactly as you would to an educated native speaker, at full pace. " +
+    "Work on register, nuance and precision rather than correctness. Notice " +
+    "where phrasing is accurate but not idiomatic, and say so.",
 };
 
 /**
@@ -35,6 +58,7 @@ export function coachInstructions(input: {
     "You are an English speaking coach for a commuter who is driving.",
     "",
     `Today's topic is: ${input.topic}.`,
+    `The learner has set their level to CEFR ${input.level}.`,
     LEVEL_GUIDANCE[input.level],
     "",
     "Rules:",
