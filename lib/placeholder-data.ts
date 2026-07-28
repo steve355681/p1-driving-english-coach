@@ -124,7 +124,7 @@ export const placeholderReview: SessionReview = {
       exampleEn: "The launch is on hold until next month.",
       category: "work",
       reviewStage: 1,
-      lastReviewedAt: "2026-07-23T08:00:00.000Z",
+      lastReviewedAt: "2026-07-15T08:00:00.000Z",
       createdAt: "2026-07-22T08:15:00.000Z",
     },
     {
@@ -134,7 +134,7 @@ export const placeholderReview: SessionReview = {
       meaningZh: "帶某人逐步了解",
       exampleEn: "Let me walk you through the plan.",
       category: "work",
-      reviewStage: 2,
+      reviewStage: 1,
       lastReviewedAt: "2026-07-23T08:00:00.000Z",
       createdAt: "2026-07-19T08:50:00.000Z",
     },
@@ -145,8 +145,8 @@ export const placeholderReview: SessionReview = {
       meaningZh: "很趕的期限",
       exampleEn: "We're working with a tight deadline.",
       category: "work",
-      reviewStage: 3,
-      lastReviewedAt: "2026-07-18T08:00:00.000Z",
+      reviewStage: 2,
+      lastReviewedAt: "2026-06-20T08:00:00.000Z",
       createdAt: "2026-07-11T08:00:00.000Z",
     },
     {
@@ -156,7 +156,7 @@ export const placeholderReview: SessionReview = {
       meaningZh: "等待（某人回覆）",
       exampleEn: "I'm waiting on his reply.",
       category: "general",
-      reviewStage: 4,
+      reviewStage: 2,
       lastReviewedAt: "2026-07-09T08:00:00.000Z",
       createdAt: "2026-07-02T08:00:00.000Z",
     },
@@ -166,10 +166,14 @@ export const placeholderReview: SessionReview = {
 };
 
 /**
- * The demo phrases carry staggered review progress on purpose, so the
- * expression wall shows its rhythm — some due, some still inside an interval —
- * instead of a flat row of identical chips.
+ * The clock the demo dashboard is rendered against.
+ *
+ * Two days after the newest fixture session, so the expression wall shows its
+ * rhythm — some phrases due, some still inside an interval — rather than a
+ * flat row of identical chips. Against the real clock the fixed fixture dates
+ * would drift out of every window and the demo would slowly empty itself.
  */
+export const PLACEHOLDER_NOW = new Date("2026-07-26T09:00:00.000Z");
 
 /**
  * Corrections accumulated across the demo sessions, for the dashboard's

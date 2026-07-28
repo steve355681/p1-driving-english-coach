@@ -17,6 +17,7 @@ import {
   type ProgressSummary,
 } from "@/lib/progress/summarise";
 import {
+  PLACEHOLDER_NOW,
   placeholderFeedbackTypes,
   placeholderReview,
   placeholderSessions,
@@ -124,10 +125,10 @@ export async function loadReview(
  * The placeholder dashboard runs through the same aggregation as the real one,
  * so the demo cannot show a shape the product does not actually produce.
  *
- * "Now" is anchored to the newest fixture session rather than the real clock.
- * The fixtures have fixed dates, so against the real clock the demo's weekly
- * chart would quietly empty out as months passed, and the dates listed directly
- * above it would disagree with it.
+ * "Now" is `PLACEHOLDER_NOW` rather than the real clock. The fixtures have
+ * fixed dates, so against the real clock the demo's weekly chart would quietly
+ * empty out as months passed, and the dates listed directly above it would
+ * disagree with it.
  */
 export async function loadProgress(): Promise<Sourced<ProgressSummary>> {
   if (!isSupabaseConfigured()) {
@@ -147,7 +148,7 @@ export async function loadProgress(): Promise<Sourced<ProgressSummary>> {
           reviewStage: item.reviewStage,
           lastReviewedAt: item.lastReviewedAt,
         })),
-        now: new Date(placeholderSessions[0].endedAt ?? ""),
+        now: PLACEHOLDER_NOW,
       }),
       placeholder: true,
     };

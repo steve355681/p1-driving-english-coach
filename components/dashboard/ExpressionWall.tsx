@@ -8,7 +8,7 @@ import {
   REVIEW_STAGES,
   type WallPhrase,
 } from "@/lib/progress/rhythm";
-import { toError } from "@/lib/utils";
+import { formatDateZh, toError } from "@/lib/utils";
 
 /**
  * The expression wall, on a spaced-review rhythm.
@@ -18,11 +18,11 @@ import { toError } from "@/lib/utils";
  * and returns it to the plain surface until that interval elapses. After the
  * last interval it leaves the wall — the point is to empty, not to accumulate.
  *
- * Every chip is tappable, including one still inside its interval. The tint is
- * a suggestion about where attention is worth spending, not a lock: someone who
- * wants to run through the whole wall should be able to, and an early recall is
- * still a recall. One rule for every chip also beats a tap that means different
- * things depending on a date the learner cannot see.
+ * Every chip is tappable, but a phrase still inside its interval only reveals
+ * when it next comes round — it does not advance. Someone browsing the wall
+ * out of curiosity must not be able to burn a phrase off it: six curious taps
+ * would otherwise run a phrase through the whole schedule in one sitting and
+ * delete it, and nothing on screen would have warned them.
  *
  * Class names are written out rather than built from the stage number: Tailwind
  * scans source text, so an interpolated `bg-rhythm-${stage}` would compile to
@@ -32,14 +32,7 @@ const STAGE_STYLES = [
   "border-rhythm-0/40 bg-rhythm-0/15",
   "border-rhythm-1/40 bg-rhythm-1/15",
   "border-rhythm-2/40 bg-rhythm-2/15",
-  "border-rhythm-3/40 bg-rhythm-3/15",
-  "border-rhythm-4/40 bg-rhythm-4/15",
-  "border-rhythm-5/40 bg-rhythm-5/15",
 ];
-
-function intervalLabel(days: number) {
-  return days === 0 ? "剛學到" : `隔 ${days} 天`;
-}
 
 export function ExpressionWall({
   phrases,
@@ -49,13 +42,24 @@ export function ExpressionWall({
   placeholder: boolean;
 }) {
   const [items, setItems] = useState(phrases);
+  const [peeked, setPeeked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // The parent loads asynchronously, so the first render arrives empty.
   useEffect(() => setItems(phrases), [phrases]);
 
+  /**
+   * A tap on a phrase that is not due yet. It says when the phrase comes round
+   * again and changes nothing — looking is not recalling, and treating it as a
+   * review would quietly compress a schedule the learner never asked to skip.
+   */
+  function peek(phrase: WallPhrase) {
+    setPeeked((current) => (current === phrase.id ? null : phrase.id));
+  }
+
   async function review(phrase: WallPhrase) {
     setError(null);
+    setPeeked(null);
 
     // Applied before the write: a tap on a chip has to feel immediate, and the
     // next state is fully determined by the current one, so there is nothing to
@@ -110,9 +114,12 @@ export function ExpressionWall({
           <button
             key={item.id}
             type="button"
-            onClick={() => review(item)}
-            title={intervalLabel(item.intervalDays)}
-            aria-label={`複習 ${item.phrase}，${item.meaningZh}`}
+            onClick={() => (item.due ? review(item) : peek(item))}
+            aria-label={
+              item.due
+                ? `複習 ${item.phrase}，${item.meaningZh}`
+                : `${item.phrase}，${item.meaningZh}，還在間隔內`
+            }
             className={[
               "cursor-pointer rounded-xl border px-3 py-2 text-left transition-colors",
               item.due
@@ -124,19 +131,22 @@ export function ExpressionWall({
             <span className="block text-[10px] text-muted">
               {item.meaningZh}
             </span>
+            {peeked === item.id ? (
+              <span className="mt-1 block text-[10px] text-brand">
+                {formatDateZh(new Date(item.dueAtMs).toISOString())}再複習
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
 
       <p className="text-xs leading-relaxed text-muted">
         {due > 0
-          ? `有 ${due} 個該複習了（上色的那些）。`
+          ? `有 ${due} 個該複習了（上色的那些）。想起意思就點一下，它會退到下一個間隔。`
           : "目前都在間隔內，時間到了會自己上色。"}
-        想起意思就點一下，它會退到下一個間隔（
-        {REVIEW_INTERVALS_DAYS.slice(1)
-          .map((days) => `${days} 天`)
-          .join("、")}
-        ）。沒上色的也點得下去，提早複習一樣算。走完最後一輪就會從這裡消失，仍然留在那次練習的回顧裡。
+        節奏是{" "}
+        {REVIEW_INTERVALS_DAYS.map((days) => `${days} 天`).join("、")}{" "}
+        三輪，走完就會從這裡消失，仍然留在那次練習的回顧裡。沒上色的點下去只會告訴你下次什麼時候，不會推進進度。
       </p>
 
       {error ? <p className="text-xs text-state-error">{error}</p> : null}

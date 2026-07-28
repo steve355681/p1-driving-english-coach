@@ -26,9 +26,9 @@ function phrase(overrides) {
   };
 }
 
-test("the intervals widen and the first one is immediate", () => {
-  assert.deepEqual([...REVIEW_INTERVALS_DAYS], [0, 1, 3, 7, 14, 30]);
-  assert.equal(REVIEW_STAGES, 6);
+test("three intervals — a day, a week, a month — and they widen", () => {
+  assert.deepEqual([...REVIEW_INTERVALS_DAYS], [1, 7, 30]);
+  assert.equal(REVIEW_STAGES, 3);
 
   const ascending = REVIEW_INTERVALS_DAYS.every(
     (days, i) => i === 0 || days > REVIEW_INTERVALS_DAYS[i - 1],
@@ -37,36 +37,40 @@ test("the intervals widen and the first one is immediate", () => {
 });
 
 test("a phrase is scheduled from its last recall, or from when it was collected", () => {
-  // Never reviewed: anchored to createdAt, stage 0 waits zero days.
+  // Never reviewed: anchored to createdAt, and stage 0 waits a day.
   assert.equal(
     dueAt(phrase()),
-    Date.parse("2026-07-28T08:00:00.000Z"),
+    Date.parse("2026-07-28T08:00:00.000Z") + DAY,
   );
 
-  // Reviewed once: the 1-day interval runs from the recall, not from creation.
+  // Reviewed once: the 7-day interval runs from the recall, not from creation.
   assert.equal(
     dueAt(
       phrase({ reviewStage: 1, lastReviewedAt: "2026-07-28T08:00:00.000Z" }),
     ),
-    Date.parse("2026-07-28T08:00:00.000Z") + DAY,
+    Date.parse("2026-07-28T08:00:00.000Z") + 7 * DAY,
   );
 });
 
-test("a freshly collected phrase is due straight away", () => {
+test("a phrase collected today waits a day before it is due", () => {
   const [item] = buildWall([phrase()], NOW);
-  assert.equal(item.due, true);
+  assert.equal(item.due, false);
   assert.equal(item.stage, 0);
-  assert.equal(item.intervalDays, 0);
+  assert.equal(item.intervalDays, 1);
+
+  const [tomorrow] = buildWall([phrase()], new Date(NOW.getTime() + DAY));
+  assert.equal(tomorrow.due, true);
 });
 
 test("a phrase inside its interval is not due", () => {
-  // Reviewed an hour ago at stage 2, which waits three days.
+  // Reviewed an hour ago at stage 2, which waits thirty days.
   const [item] = buildWall(
     [phrase({ reviewStage: 2, lastReviewedAt: "2026-07-28T08:00:00.000Z" })],
     NOW,
   );
   assert.equal(item.due, false);
-  assert.equal(item.intervalDays, 3);
+  assert.equal(item.intervalDays, 30);
+  assert.equal(item.dueAtMs, Date.parse("2026-07-28T08:00:00.000Z") + 30 * DAY);
 });
 
 test("a phrase that has cleared every interval leaves the wall", () => {
@@ -94,7 +98,7 @@ test("a duplicate never resurrects a finished phrase or resets progress", () => 
       phrase({ id: "new", reviewStage: 0 }),
       phrase({
         id: "old",
-        reviewStage: 3,
+        reviewStage: 2,
         lastReviewedAt: "2026-07-27T08:00:00.000Z",
       }),
     ],
@@ -102,15 +106,15 @@ test("a duplicate never resurrects a finished phrase or resets progress", () => 
   );
   assert.equal(partial.length, 1);
   assert.equal(partial[0].id, "old");
-  assert.equal(partial[0].stage, 3);
+  assert.equal(partial[0].stage, 2);
 });
 
 test("due phrases come first, earliest in the rhythm before the rest", () => {
   const wall = buildWall(
     [
-      phrase({ id: "a", phrase: "settled", reviewStage: 2, lastReviewedAt: "2026-07-28T08:00:00.000Z" }),
-      phrase({ id: "b", phrase: "overdue-late", reviewStage: 4, lastReviewedAt: "2026-06-01T08:00:00.000Z" }),
-      phrase({ id: "c", phrase: "overdue-early", reviewStage: 1, lastReviewedAt: "2026-06-01T08:00:00.000Z" }),
+      phrase({ id: "a", phrase: "settled", reviewStage: 1, lastReviewedAt: "2026-07-28T08:00:00.000Z" }),
+      phrase({ id: "b", phrase: "overdue-late", reviewStage: 2, lastReviewedAt: "2026-06-01T08:00:00.000Z" }),
+      phrase({ id: "c", phrase: "overdue-early", reviewStage: 0, lastReviewedAt: "2026-06-01T08:00:00.000Z" }),
     ],
     NOW,
   );

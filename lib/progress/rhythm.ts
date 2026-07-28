@@ -16,11 +16,13 @@ import type { FeedbackType } from "@/types";
 /**
  * Days to wait at each stage before a phrase is worth seeing again.
  *
- * Stage 0 is zero days on purpose: the first recall belongs right after the
- * drive, while the conversation it came from is still fresh. Everything after
- * that widens.
+ * Three intervals, not the finer ladder textbook curves draw: a day, a week, a
+ * month. They are where the forgetting curve actually bends, and they are the
+ * only ones a person can hold in their head — a schedule you cannot predict is
+ * one you stop trusting. More stages would also mean more taps before a phrase
+ * leaves the wall, and the wall is meant to empty.
  */
-export const REVIEW_INTERVALS_DAYS = [0, 1, 3, 7, 14, 30] as const;
+export const REVIEW_INTERVALS_DAYS = [1, 7, 30] as const;
 
 /** A phrase that has cleared every interval has left the wall. */
 export const REVIEW_STAGES = REVIEW_INTERVALS_DAYS.length;
@@ -48,6 +50,8 @@ export interface WallPhrase {
   due: boolean;
   /** Days in the current interval — what the chip's colour means. */
   intervalDays: number;
+  /** When it next comes round. Shown when tapping a phrase that is not due. */
+  dueAtMs: number;
 }
 
 /** Categories on the dashboard's recurring-problem chart. */
@@ -103,6 +107,7 @@ export function buildWall(rows: PhraseRow[], now: Date): WallPhrase[] {
       stage: row.reviewStage,
       due: time >= dueAt(row),
       intervalDays: REVIEW_INTERVALS_DAYS[row.reviewStage] ?? 0,
+      dueAtMs: dueAt(row),
     }))
     .sort((a, b) => {
       // Due first — the wall's job is to show what is worth a glance now.
