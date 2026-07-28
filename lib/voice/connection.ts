@@ -7,6 +7,7 @@
  * latency is what makes a spoken conversation feel broken.
  */
 
+import { classifyTranscript } from "@/lib/session/transcript";
 import type { VoiceTier } from "@/types";
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
@@ -15,6 +16,7 @@ export type VoiceEvent =
   | { type: "connected" }
   | { type: "coach-speaking" }
   | { type: "coach-done" }
+  | { type: "transcript"; role: "user" | "coach"; text: string }
   | { type: "error"; error: Error }
   | { type: "closed" };
 
@@ -25,6 +27,8 @@ export interface VoiceGrant {
 
 export interface VoiceConnection extends VoiceGrant {
   close: () => void;
+  /** False when OpenAI refused the transcription config; see the API route. */
+  transcription: boolean;
 }
 
 /** Raised when the gate refused; carries the message meant for the user. */
@@ -60,6 +64,7 @@ async function requestGrant(input: {
     grantedSeconds?: number;
     model?: string;
     tier?: VoiceTier;
+    transcription?: boolean;
     error?: string;
   };
 
@@ -73,6 +78,7 @@ async function requestGrant(input: {
   return payload as Required<Pick<typeof payload, "value" | "model">> & {
     grantedSeconds: number;
     tier: VoiceTier;
+    transcription: boolean;
   };
 }
 
@@ -150,7 +156,11 @@ export async function connectVoice(input: {
     const channel = peer.createDataChannel("oai-events");
     channel.onopen = () => input.onEvent({ type: "connected" });
     channel.onmessage = (message) => {
-      let event: { type?: string; error?: { message?: string } };
+      let event: {
+        type?: string;
+        transcript?: string;
+        error?: { message?: string };
+      };
       try {
         event = JSON.parse(message.data as string);
       } catch {
@@ -163,6 +173,15 @@ export async function connectVoice(input: {
           type: "error",
           error: new Error(event.error?.message ?? "語音服務發生錯誤。"),
         });
+        return;
+      }
+
+      const role = classifyTranscript(event.type);
+      if (role) {
+        const text = event.transcript;
+        if (typeof text === "string") {
+          input.onEvent({ type: "transcript", role, text });
+        }
         return;
       }
 
@@ -208,6 +227,7 @@ export async function connectVoice(input: {
       close,
       grantedSeconds: grant.grantedSeconds,
       tier: grant.tier,
+      transcription: grant.transcription !== false,
     };
   } catch (cause) {
     // Never leave the microphone open on a failed connection.

@@ -11,6 +11,10 @@ import {
   type SessionEvent,
 } from "@/lib/session/machine";
 import { connectVoice, type VoiceConnection } from "@/lib/voice/connection";
+import {
+  createTranscriptLog,
+  type TranscriptLog,
+} from "@/lib/session/transcript";
 import { getAccessToken } from "@/lib/supabase/auth";
 import {
   ROUTES,
@@ -49,6 +53,32 @@ export function LiveSessionScreen({
   const audioRef = useRef<HTMLAudioElement>(null);
   const voiceRef = useRef<VoiceConnection | null>(null);
   const lastPersisted = useRef<SessionStatus | null>(null);
+  const transcriptRef = useRef<TranscriptLog | null>(null);
+  const savingRef = useRef(false);
+
+  /**
+   * Writes the whole transcript, not a delta. Sending the full array makes a
+   * retry or an out-of-order write harmless, where appending could duplicate
+   * turns. Overlapping writes are skipped rather than queued — the next flush
+   * carries everything anyway.
+   */
+  const flushTranscript = useCallback(async () => {
+    const log = transcriptRef.current;
+    if (!log || placeholder || savingRef.current) return;
+
+    savingRef.current = true;
+    const snapshot = log.all();
+    try {
+      await db.saveTranscript(session.id, snapshot);
+      log.markFlushed();
+    } catch (cause) {
+      // Keep the turns pending so the next flush retries them. A failed save
+      // must not interrupt the conversation.
+      console.error("Could not save transcript", cause);
+    } finally {
+      savingRef.current = false;
+    }
+  }, [placeholder, session.id]);
 
   const send = useCallback(
     (event: SessionEvent) => {
@@ -83,6 +113,16 @@ export function LiveSessionScreen({
     return () => clearInterval(timer);
   }, [status]);
 
+  // The turn-count trigger alone would strand a few turns whenever the
+  // conversation goes quiet, which is exactly when a drive tends to end.
+  useEffect(() => {
+    if (!isRunning(status)) return;
+    const timer = setInterval(() => {
+      if (transcriptRef.current?.due()) void flushTranscript();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [status, flushTranscript]);
+
   async function connect() {
     setError(null);
     setNotice(null);
@@ -101,6 +141,9 @@ export function LiveSessionScreen({
       const audioElement = audioRef.current;
       if (!audioElement) throw new Error("音訊元件尚未就緒。");
 
+      const log = createTranscriptLog();
+      transcriptRef.current = log;
+
       voiceRef.current = await connectVoice({
         sessionId: session.id,
         requestedSeconds: session.durationMinutes * 60,
@@ -117,6 +160,10 @@ export function LiveSessionScreen({
             case "coach-done":
               send({ type: "COACH_DONE" });
               break;
+            case "transcript":
+              log.add({ role: event.role, text: event.text });
+              if (log.due()) void flushTranscript();
+              break;
             case "error":
               setError(event.error.message);
               break;
@@ -129,9 +176,14 @@ export function LiveSessionScreen({
       // A trial grant is shorter than the chosen duration; say so once, before
       // the drive, rather than cutting out unexplained later.
       const granted = voiceRef.current.grantedSeconds;
+      const notes: string[] = [];
       if (granted < session.durationMinutes * 60) {
-        setNotice(`本次可練習 ${Math.round(granted / 60)} 分鐘。`);
+        notes.push(`本次可練習 ${Math.round(granted / 60)} 分鐘。`);
       }
+      if (!voiceRef.current.transcription) {
+        notes.push("這次無法記錄逐字稿，練習結束後不會有回顧內容。");
+      }
+      if (notes.length) setNotice(notes.join(" "));
     } catch (cause) {
       setError(toError(cause).message);
       send({ type: "FAIL" });
@@ -145,8 +197,9 @@ export function LiveSessionScreen({
 
     try {
       if (!placeholder) {
-        // Transcript capture lands in Phase 4d.
-        await db.completeSession(session.id, []);
+        // The final write carries everything, including turns a periodic flush
+        // has not reached yet.
+        await db.completeSession(session.id, transcriptRef.current?.all() ?? []);
       }
       send({ type: "ENDED" });
       router.push(ROUTES.review(session.id));

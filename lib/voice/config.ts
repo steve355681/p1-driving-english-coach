@@ -9,6 +9,17 @@ import type { EnglishLevel } from "@/types";
 export const REALTIME_MODEL = "gpt-realtime-2.1-mini";
 
 /**
+ * Transcription is off by default — the model consumes audio directly, so the
+ * text only exists if we ask for it. It is what the whole after-drive review is
+ * built from.
+ *
+ * Treated as best-effort: transcripts are described as guidance about what was
+ * said rather than exactly what the model heard, which is fine for spotting
+ * recurring mistakes and wrong for anything that has to be quoted as fact.
+ */
+export const TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe";
+
+/**
  * How the coach speaks at each CEFR level.
  *
  * Written as instructions about the coach's own output, not descriptions of

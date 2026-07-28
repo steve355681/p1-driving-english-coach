@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getRequestUser, serviceClient } from "@/lib/supabase/server";
 import { decideGrant, denialMessage } from "@/lib/voice/policy";
-import { REALTIME_MODEL, coachInstructions } from "@/lib/voice/config";
+import {
+  REALTIME_MODEL,
+  TRANSCRIPTION_MODEL,
+  coachInstructions,
+} from "@/lib/voice/config";
 import type { VoiceTier } from "@/types";
 
 /**
@@ -98,26 +102,52 @@ export async function POST(request: Request) {
     );
   }
 
-  const openaiResponse = await fetch(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${openaiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      // The credential dies with the grant, so a leaked one cannot outlive the
-      // session it was issued for.
-      expires_after: { anchor: "created_at", seconds: decision.grantedSeconds },
-      session: {
-        type: "realtime",
-        model: REALTIME_MODEL,
-        instructions: coachInstructions({
-          topic: session.topic,
-          level: session.level,
-        }),
-      },
+  const baseSession = {
+    type: "realtime",
+    model: REALTIME_MODEL,
+    instructions: coachInstructions({
+      topic: session.topic,
+      level: session.level,
     }),
+  };
+
+  const mint = (session: Record<string, unknown>) =>
+    fetch(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        // The credential dies with the grant, so a leaked one cannot outlive
+        // the session it was issued for.
+        expires_after: {
+          anchor: "created_at",
+          seconds: decision.grantedSeconds,
+        },
+        session,
+      }),
+    });
+
+  let openaiResponse = await mint({
+    ...baseSession,
+    audio: { input: { transcription: { model: TRANSCRIPTION_MODEL } } },
   });
+  let transcription = true;
+
+  // Transcription config has moved once already (a top-level
+  // input_audio_transcription became audio.input.transcription), and a
+  // rejected shape would take the whole session down with it. Losing the
+  // transcript costs a review; losing the session costs the drive. So on a
+  // rejection, try again without it and say so in the response.
+  if (openaiResponse.status === 400) {
+    console.error(
+      "Realtime session rejected with transcription config",
+      await openaiResponse.text(),
+    );
+    openaiResponse = await mint(baseSession);
+    transcription = false;
+  }
 
   if (!openaiResponse.ok) {
     const detail = await openaiResponse.text();
@@ -158,5 +188,6 @@ export async function POST(request: Request) {
     grantedSeconds: decision.grantedSeconds,
     model: REALTIME_MODEL,
     tier,
+    transcription,
   });
 }
