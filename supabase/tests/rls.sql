@@ -41,6 +41,7 @@ grant usage on schema public to anon, authenticated;
 
 \ir ../migrations/20260727100000_init.sql
 \ir ../migrations/20260728090000_voice_entitlements.sql
+\ir ../migrations/20260728120000_voice_usage.sql
 
 -- Supabase grants these to anon/authenticated out of the box; the stub has to
 -- match, or every statement below fails on table permissions before RLS is
@@ -169,6 +170,38 @@ select count(*) as visible from public.voice_entitlements;
 set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 \echo '--- V5: B sees their own entitlement (expect 1, full)'
 select count(*) as visible, max(tier) as tier from public.voice_entitlements;
+
+-- ---------------------------------------------------------------------------
+-- voice usage: the quota is computed from these rows, so a user who can write
+-- them can reset their own quota
+-- ---------------------------------------------------------------------------
+
+reset role;
+insert into public.voice_usage (user_id, granted_seconds, tier)
+values ('11111111-1111-1111-1111-111111111111', 180, 'trial');
+
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+\echo '--- U1: A sees their own usage (expect 1)'
+select count(*) as own_usage from public.voice_usage;
+
+\echo '--- U2: A cannot delete usage to reset their quota -- expect DELETE 0'
+delete from public.voice_usage;
+
+\echo '--- U3: A cannot backdate usage out of the window -- expect UPDATE 0'
+update public.voice_usage set created_at = now() - interval '30 days';
+
+\echo '--- U4: A cannot forge a usage row -- expect reject'
+insert into public.voice_usage (user_id, granted_seconds, tier)
+values ('11111111-1111-1111-1111-111111111111', 1, 'full');
+
+\echo '--- U5: the row survived every attempt (expect 1)'
+select count(*) as still_there from public.voice_usage;
+
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+\echo '--- U6: B cannot see As usage (expect 0)'
+select count(*) as b_sees from public.voice_usage;
 
 reset role;
 \echo '--- C10: deleting the auth user cascades (expect 0, 0, 0)'

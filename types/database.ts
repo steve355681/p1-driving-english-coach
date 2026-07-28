@@ -69,6 +69,19 @@ export type FeedbackItemRow = {
 }
 
 /** Read-only from the client — see the migration for why. */
+export type VoiceUsageRow = {
+  id: string;
+  user_id: string;
+  session_id: string | null;
+  granted_seconds: number;
+  tier: VoiceTier;
+  created_at: string;
+}
+
+/** Written by the API route with the service role only. */
+export type VoiceUsageInsert = Omit<VoiceUsageRow, "id" | "created_at">;
+
+/** Read-only from the client — see the migration for why. */
 export type VoiceEntitlementRow = {
   user_id: string;
   tier: VoiceTier;
@@ -142,6 +155,13 @@ export type Database = {
         Row: VoiceEntitlementRow;
         // Readable only; there is no client-side write path by design.
         Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      voice_usage: {
+        Row: VoiceUsageRow;
+        // Only ever inserted by the API route, which uses the service role.
+        Insert: VoiceUsageInsert;
         Update: never;
         Relationships: [];
       };
