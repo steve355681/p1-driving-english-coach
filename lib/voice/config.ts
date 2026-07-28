@@ -20,6 +20,28 @@ export const REALTIME_MODEL = "gpt-realtime-2.1-mini";
 export const TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe";
 
 /**
+ * Caps how much conversation history is re-sent — and re-billed — each turn.
+ *
+ * Measured on a real 15-minute session: audio *input* cost $0.57 against $0.17
+ * of output, because every turn re-processes the whole conversation. Cached
+ * input was $0.03, so almost none of that history was hitting the cache.
+ *
+ * The server default of retention_ratio 1.0 drops only the minimum needed,
+ * which means it truncates on nearly every turn once the limit is reached, and
+ * each truncation invalidates the cache. Dropping more per truncation means
+ * truncating far less often, which is what lets the cache actually hold.
+ *
+ * The cost is that the coach forgets the earliest part of a long conversation.
+ * For speaking practice that is a fair trade — it is a conversation, not a
+ * narrative that has to stay consistent to the end.
+ */
+export const TRUNCATION = {
+  type: "retention_ratio",
+  retention_ratio: 0.7,
+  token_limits: { post_instructions: 4000 },
+} as const;
+
+/**
  * How the coach speaks at each CEFR level.
  *
  * Written as instructions about the coach's own output, not descriptions of

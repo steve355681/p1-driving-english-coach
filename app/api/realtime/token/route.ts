@@ -4,6 +4,7 @@ import { decideGrant, denialMessage } from "@/lib/voice/policy";
 import {
   REALTIME_MODEL,
   TRANSCRIPTION_MODEL,
+  TRUNCATION,
   coachInstructions,
 } from "@/lib/voice/config";
 import type { VoiceTier } from "@/types";
@@ -146,25 +147,37 @@ export async function POST(request: Request) {
       }),
     });
 
-  let openaiResponse = await mint({
+  const withTranscription = {
     ...baseSession,
     audio: { input: { transcription: { model: TRANSCRIPTION_MODEL } } },
-  });
-  let transcription = true;
+  };
 
-  // Transcription config has moved once already (a top-level
-  // input_audio_transcription became audio.input.transcription), and a
-  // rejected shape would take the whole session down with it. Losing the
-  // transcript costs a review; losing the session costs the drive. So on a
-  // rejection, try again without it and say so in the response.
-  if (openaiResponse.status === 400) {
+  /**
+   * Two optional pieces of session config, each of which the API could reject
+   * on its own — both have shapes that have changed before. They are dropped
+   * one at a time rather than together, so a rejected truncation setting does
+   * not silently cost the transcript as well. Losing either costs a feature;
+   * losing the session costs the drive.
+   */
+  const attempts = [
+    { session: { ...withTranscription, truncation: TRUNCATION }, transcription: true, truncation: true },
+    { session: withTranscription, transcription: true, truncation: false },
+    { session: baseSession, transcription: false, truncation: false },
+  ];
+
+  let openaiResponse = await mint(attempts[0].session);
+  let active = attempts[0];
+
+  for (let i = 1; i < attempts.length && openaiResponse.status === 400; i++) {
     console.error(
-      "Realtime session rejected with transcription config",
+      `Realtime session rejected (attempt ${i})`,
       await openaiResponse.text(),
     );
-    openaiResponse = await mint(baseSession);
-    transcription = false;
+    active = attempts[i];
+    openaiResponse = await mint(active.session);
   }
+
+  const transcription = active.transcription;
 
   if (!openaiResponse.ok) {
     const detail = await openaiResponse.text();
@@ -206,5 +219,6 @@ export async function POST(request: Request) {
     model: REALTIME_MODEL,
     tier,
     transcription,
+    truncation: active.truncation,
   });
 }
