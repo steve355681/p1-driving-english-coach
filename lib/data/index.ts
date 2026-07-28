@@ -11,7 +11,13 @@
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import * as db from "@/lib/db/sessions";
 import { getSessionReview } from "@/lib/db/reviews";
+import { getProgressSummary } from "@/lib/db/progress";
 import {
+  summariseProgress,
+  type ProgressSummary,
+} from "@/lib/progress/summarise";
+import {
+  placeholderFeedbackTypes,
   placeholderReview,
   placeholderSessions,
 } from "@/lib/placeholder-data";
@@ -112,6 +118,35 @@ export async function loadReview(
   }
 
   return { data: await getSessionReview(id), placeholder: false };
+}
+
+/**
+ * The placeholder dashboard runs through the same aggregation as the real one,
+ * so the demo cannot show a shape the product does not actually produce.
+ *
+ * "Now" is anchored to the newest fixture session rather than the real clock.
+ * The fixtures have fixed dates, so against the real clock the demo's weekly
+ * chart would quietly empty out as months passed, and the dates listed directly
+ * above it would disagree with it.
+ */
+export async function loadProgress(): Promise<Sourced<ProgressSummary>> {
+  if (!isSupabaseConfigured()) {
+    return {
+      data: summariseProgress({
+        sessions: placeholderSessions,
+        feedbackTypes: placeholderFeedbackTypes,
+        vocabulary: placeholderReview.vocabulary.map((item) => ({
+          phrase: item.phrase,
+          meaningZh: item.meaningZh,
+          sessionId: item.sessionId,
+        })),
+        now: new Date(placeholderSessions[0].startedAt),
+      }),
+      placeholder: true,
+    };
+  }
+
+  return { data: await getProgressSummary(), placeholder: false };
 }
 
 export { db };

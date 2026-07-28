@@ -98,6 +98,18 @@ One generation per session: if a summary already exists the endpoint returns
 without calling the model, which caps the cost and makes retries free. The
 trade-off is that a poor-but-valid review cannot be regenerated from the UI.
 
+**Decided (Phase 6): the dashboard counts elapsed time, not requested
+duration.** The totals previously summed `duration_minutes`, which is what the
+learner picked in the launcher before the drive. That overstates: a trial grant
+caps at three minutes, sessions get ended early, and a session that never
+connected still carries its requested duration — so opening the launcher five
+times and never speaking read as 75 minutes practised. Sessions with no
+`ended_at` now count as zero and are labelled 未完成.
+
+The trend view is minutes per week, not a score curve. It shows whether the
+habit is holding, which is the thing this product actually depends on, and it
+requires inventing nothing.
+
 ### 4. Language of UI
 Recommendation: Chinese UI with English speaking experience, since that best fits the target user context.
 

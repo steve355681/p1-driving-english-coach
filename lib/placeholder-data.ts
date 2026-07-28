@@ -6,7 +6,7 @@
  * schema) and Phase 5 (review generation) are in place.
  */
 
-import type { Session, SessionReview } from "@/types";
+import type { FeedbackType, Session, SessionReview } from "@/types";
 
 export const IS_PLACEHOLDER_DATA = true;
 
@@ -150,10 +150,17 @@ export const placeholderReview: SessionReview = {
   transcriptTurns: 0,
 };
 
-/** Recurring error themes for the dashboard (Phase 6 will derive these for real). */
-export const placeholderErrorThemes = [
-  { label: "時態一致性", count: 12 },
-  { label: "冠詞 a / the", count: 8 },
-  { label: "中式英文用詞", count: 6 },
-  { label: "介系詞搭配", count: 4 },
+/**
+ * Corrections accumulated across the demo sessions, for the dashboard's
+ * recurring-problem chart.
+ *
+ * A flat list of types rather than pre-written labels like "時態一致性": the real
+ * chart can only bucket by the types the review produces, and a demo that
+ * promises finer categories than the product delivers is a lie told in a
+ * screenshot.
+ */
+export const placeholderFeedbackTypes: FeedbackType[] = [
+  ...Array<FeedbackType>(7).fill("grammar"),
+  ...Array<FeedbackType>(4).fill("word_choice"),
+  ...Array<FeedbackType>(2).fill("fluency"),
 ];
