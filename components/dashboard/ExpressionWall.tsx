@@ -18,6 +18,12 @@ import { toError } from "@/lib/utils";
  * and returns it to the plain surface until that interval elapses. After the
  * last interval it leaves the wall — the point is to empty, not to accumulate.
  *
+ * Every chip is tappable, including one still inside its interval. The tint is
+ * a suggestion about where attention is worth spending, not a lock: someone who
+ * wants to run through the whole wall should be able to, and an early recall is
+ * still a recall. One rule for every chip also beats a tap that means different
+ * things depending on a date the learner cannot see.
+ *
  * Class names are written out rather than built from the stage number: Tailwind
  * scans source text, so an interpolated `bg-rhythm-${stage}` would compile to
  * nothing and every chip would render plain.
@@ -104,19 +110,14 @@ export function ExpressionWall({
           <button
             key={item.id}
             type="button"
-            disabled={!item.due}
             onClick={() => review(item)}
             title={intervalLabel(item.intervalDays)}
-            aria-label={
-              item.due
-                ? `複習 ${item.phrase}，${item.meaningZh}`
-                : `${item.phrase}，${item.meaningZh}`
-            }
+            aria-label={`複習 ${item.phrase}，${item.meaningZh}`}
             className={[
-              "rounded-xl border px-3 py-2 text-left transition-colors",
+              "cursor-pointer rounded-xl border px-3 py-2 text-left transition-colors",
               item.due
-                ? `${STAGE_STYLES[item.stage]} cursor-pointer`
-                : "border-line bg-surface opacity-60",
+                ? STAGE_STYLES[item.stage]
+                : "border-line bg-surface hover:bg-surface-2",
             ].join(" ")}
           >
             <span className="block text-xs text-fg">{item.phrase}</span>
@@ -129,9 +130,13 @@ export function ExpressionWall({
 
       <p className="text-xs leading-relaxed text-muted">
         {due > 0
-          ? `有 ${due} 個該複習了 —— 想起意思就點一下，它會退到下一個間隔（${REVIEW_INTERVALS_DAYS.slice(1).map((d) => `${d} 天`).join("、")}）。`
-          : "目前都在間隔內，時間到了會自己亮起來。"}
-        走完最後一輪就會從這裡消失，仍然留在那次練習的回顧裡。
+          ? `有 ${due} 個該複習了（上色的那些）。`
+          : "目前都在間隔內，時間到了會自己上色。"}
+        想起意思就點一下，它會退到下一個間隔（
+        {REVIEW_INTERVALS_DAYS.slice(1)
+          .map((days) => `${days} 天`)
+          .join("、")}
+        ）。沒上色的也點得下去，提早複習一樣算。走完最後一輪就會從這裡消失，仍然留在那次練習的回顧裡。
       </p>
 
       {error ? <p className="text-xs text-state-error">{error}</p> : null}
