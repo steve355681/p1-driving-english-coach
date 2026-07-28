@@ -157,4 +157,15 @@ export async function loadProgress(): Promise<Sourced<ProgressSummary>> {
   return { data: await getProgressSummary(), placeholder: false };
 }
 
+/**
+ * Deletes practice history.
+ *
+ * A no-op without a database: the placeholder list is a module constant, so
+ * there is nothing to remove and the next read returns the fixtures either way.
+ */
+export async function removeSessions(ids: string[]): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  await db.deleteSessions(ids);
+}
+
 export { db };

@@ -127,3 +127,23 @@ export async function completeSession(
   if (error) throw error;
   return toSession(data);
 }
+
+/**
+ * Deletes sessions outright.
+ *
+ * Row level security scopes this to the caller, so a forged id belonging to
+ * someone else deletes nothing rather than erroring — which is why there is no
+ * owner filter here.
+ *
+ * The transcript, corrections and collected phrases go with it: feedback_items
+ * and vocabulary_items cascade from the session. voice_usage does not — its
+ * session_id is `on delete set null`, deliberately, so deleting practice
+ * history cannot be used to reset a daily voice quota.
+ */
+export async function deleteSessions(ids: string[]) {
+  if (ids.length === 0) return;
+
+  const supabase = requireSupabase();
+  const { error } = await supabase.from("sessions").delete().in("id", ids);
+  if (error) throw error;
+}

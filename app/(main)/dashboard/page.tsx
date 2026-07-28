@@ -1,19 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ExpressionWall } from "@/components/dashboard/ExpressionWall";
+import { SessionList } from "@/components/dashboard/SessionList";
 import { WeeklyChart } from "@/components/dashboard/WeeklyChart";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
 import { PlaceholderNotice } from "@/components/ui/PlaceholderNotice";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { useState } from "react";
 import { useAsync } from "@/hooks/useAsync";
 import { loadProgress, loadRecentSessions } from "@/lib/data";
-import { practisedMinutes, WEEKS_SHOWN } from "@/lib/progress/summarise";
+import { WEEKS_SHOWN } from "@/lib/progress/summarise";
 import { ROUTES } from "@/lib/constants";
-import { formatDateZh } from "@/lib/utils";
 
 /**
  * Dashboard (FR-5).
@@ -23,8 +23,11 @@ import { formatDateZh } from "@/lib/utils";
  * score trend by design; see the Phase 5 decision in docs/07.
  */
 export default function DashboardPage() {
-  const sessionState = useAsync(() => loadRecentSessions(), []);
-  const progressState = useAsync(() => loadProgress(), []);
+  // Bumped after a deletion. Both reads share it so the totals, the chart and
+  // the wall cannot keep counting a session the list no longer shows.
+  const [reload, setReload] = useState(0);
+  const sessionState = useAsync(() => loadRecentSessions(), [reload]);
+  const progressState = useAsync(() => loadProgress(), [reload]);
 
   const sessions = sessionState.data?.data ?? [];
   const progress = progressState.data?.data ?? null;
@@ -84,47 +87,23 @@ export default function DashboardPage() {
           </Card>
         </section>
 
-        <section>
-          <SectionHeading title="最近的練習" />
-          {sessionState.loading ? (
-            <p className="text-sm text-muted">載入中…</p>
-          ) : sessions.length === 0 ? (
+        {sessions.length === 0 && !sessionState.loading ? (
+          <section>
+            <SectionHeading title="最近的練習" />
             <EmptyState
               title="還沒有練習紀錄"
               description="開始第一次練習，這裡就會有內容。"
               action={<ButtonLink href={ROUTES.launcher}>開始練習</ButtonLink>}
             />
-          ) : (
-            /* Three fit above the fold; the rest scroll in place rather than
-               pushing the recurring-problem and review sections off screen.
-               max-h is 3 cards plus a sliver of the fourth, so it reads as
-               scrollable without a scrollbar being visible on iOS. */
-            <ul className="flex max-h-[15.5rem] flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
-              {sessions.map((session) => {
-                const minutes = Math.round(practisedMinutes(session));
-                return (
-                  <li key={session.id}>
-                    <Link
-                      href={ROUTES.review(session.id)}
-                      className="block rounded-2xl border border-line bg-surface p-4 transition-colors hover:bg-surface-2"
-                    >
-                      <div className="flex items-baseline justify-between gap-3">
-                        <p className="text-sm font-medium">{session.topic}</p>
-                        <p className="text-xs text-muted">
-                          {formatDateZh(session.startedAt)}
-                        </p>
-                      </div>
-                      <p className="mt-1 text-xs text-muted">
-                        {minutes > 0 ? `${minutes} 分` : "未完成"} ·{" "}
-                        {session.level}
-                      </p>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+          </section>
+        ) : (
+          <SessionList
+            sessions={sessions}
+            loading={sessionState.loading}
+            placeholder={placeholder}
+            onDeleted={() => setReload((value) => value + 1)}
+          />
+        )}
 
         <section>
           <SectionHeading title="重複出現的問題" hint="本週累積" />
