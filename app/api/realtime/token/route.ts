@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getRequestUser, serviceClient } from "@/lib/supabase/server";
-import { decideGrant, denialMessage } from "@/lib/voice/policy";
+import {
+  decideGrant,
+  denialMessage,
+  readVoiceAccess,
+} from "@/lib/voice/policy";
 import {
   REALTIME_MODEL,
   TRANSCRIPTION_MODEL,
@@ -94,12 +98,21 @@ export async function POST(request: Request) {
     tier,
     requestedSeconds,
     grantsToday: count ?? 0,
+    access: readVoiceAccess(process.env.VOICE_ACCESS),
+    entitled: !!entitlement,
   });
 
   if (!decision.allowed) {
     return NextResponse.json(
       { error: denialMessage(decision.reason, tier), reason: decision.reason },
-      { status: decision.reason === "daily_limit" ? 429 : 400 },
+      {
+        status:
+          decision.reason === "daily_limit"
+            ? 429
+            : decision.reason === "not_allowed"
+              ? 403
+              : 400,
+      },
     );
   }
 

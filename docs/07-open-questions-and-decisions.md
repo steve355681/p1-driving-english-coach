@@ -62,6 +62,33 @@ The gate does not have to be full accounts — restricting voice to a known
 identity, or a per-user session cap, would both do. But something has to exist
 before the first token is spent.
 
+**Closed (Phase 7): a per-user cap, plus a switch to close it entirely.**
+
+Three things, together:
+
+1. **Tiers.** Everyone is `trial` — one session a day, three minutes each —
+   until a `voice_entitlements` row promotes them to `full`. Users cannot write
+   that table or `voice_usage`; only the API route can, with the service role.
+   So nobody can promote themselves, and nobody can delete usage rows to reset
+   a quota. Deleting practice history does not do it either: `voice_usage`
+   holds `on delete set null` against `sessions`, not cascade.
+2. **One authorisation point.** `/api/realtime/token` is the only place voice
+   spending is authorised, and it recomputes tier, quota and session ownership
+   from the database. Everything the client sends is treated as a request.
+3. **A deployment switch.** `VOICE_ACCESS=allowlist` restricts voice to users
+   with an entitlement row. The rest of the product stays fully usable.
+
+The default stays `trial`, deliberately. Measured cost is roughly $0.02 a
+minute, so a hundred trial visitors is a few dollars — worth paying for a demo
+someone can actually speak to, and bounded by the daily cap if it is not. The
+switch exists so that stops being a decision that has to be made in a hurry.
+
+What this does *not* defend against is one person creating many anonymous
+identities. Anonymous sign-in is what makes the demo work without a login wall,
+and it means the cap is per browser rather than per human. `allowlist` is the
+answer if that ever matters; a stricter middle ground would be requiring a
+verified email before the first grant.
+
 ### 2. Level System
 **Decided: CEFR A1–C2.** Reverses the earlier recommendation to start with
 `basic / intermediate / advanced`.

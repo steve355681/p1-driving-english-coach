@@ -8,13 +8,17 @@ Schema for P1 Driving English Coach. Mirrors `docs/04-technical-architecture.md`
 | `user_profiles` | level, interests, feedback style. Created automatically on sign-up by a trigger on `auth.users`. |
 | `sessions` | one practice session: settings, status, transcript, summary, scores |
 | `feedback_items` | corrections for a session |
-| `vocabulary_items` | phrases worth keeping from a session |
+| `vocabulary_items` | phrases worth keeping from a session, and their review schedule |
+| `topics` | saved notes the learner practises against |
+| `voice_entitlements` | who may spend metered voice, and how much |
+| `voice_usage` | grants issued, for the daily cap |
 
 ## Setup
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. Apply the migration — either paste `migrations/20260727100000_init.sql` into
-   the SQL editor, or with the CLI:
+2. Apply the migrations **in filename order** — paste each file in
+   `migrations/` into the SQL editor one at a time, oldest first, or with the
+   CLI:
    ```bash
    supabase link --project-ref <ref>
    supabase db push
@@ -26,8 +30,21 @@ Schema for P1 Driving English Coach. Mirrors `docs/04-technical-architecture.md`
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    ```
+5. For voice and review generation, add the service role key (Project Settings
+   → API) and an OpenAI key. Both are server-side only and must never be
+   prefixed `NEXT_PUBLIC_`:
+   ```
+   SUPABASE_SERVICE_ROLE_KEY=...
+   OPENAI_API_KEY=...
+   ```
+6. To give yourself the full voice tier, insert an entitlement row. Users
+   cannot write this table, which is the point:
+   ```sql
+   insert into public.voice_entitlements (user_id, tier, note)
+   values ('<your auth.users id>', 'full', 'owner');
+   ```
 
-Then check all three steps landed:
+Then check the connection landed:
 
 ```bash
 npm run check:supabase

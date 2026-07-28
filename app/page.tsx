@@ -86,9 +86,15 @@ export default function LandingPage() {
         <SafetyNotice />
       </section>
 
-      <footer className="border-t border-line pt-6 text-xs text-muted">
-        <p>目前為開發中的骨架版本，語音功能尚未接上。</p>
-        <p className="mt-1">規格文件放在 repo 的 docs/ 目錄。</p>
+      <footer className="border-t border-line pt-6 text-xs leading-relaxed text-muted">
+        <p>
+          語音對話、逐字稿、AI 回顧與進度統計都已經接上。試用帳號每天可以練習
+          一次、每次 3 分鐘。
+        </p>
+        <p className="mt-2">
+          練習過程只保留逐字稿，不保留錄音。完整規格與實作決策放在 repo 的
+          docs/ 目錄。
+        </p>
       </footer>
     </MobileShell>
   );

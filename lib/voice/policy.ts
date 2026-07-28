@@ -28,7 +28,28 @@ export const TIER_LIMITS: Record<VoiceTier, TierLimits> = {
   full: { maxSessionSeconds: 3600, maxSessionsPerDay: 8 },
 };
 
-export type DenialReason = "daily_limit" | "invalid_request";
+/**
+ * Who may spend voice on this deployment.
+ *
+ * `trial` lets any signed-in visitor — including an anonymous one — have one
+ * short conversation a day. That is what makes the site demoable, and it is
+ * also a standing offer to spend money on strangers: a few dollars a day if a
+ * hundred people find it, more if someone scripts it.
+ *
+ * `allowlist` restricts voice to users with a `voice_entitlements` row. The
+ * rest of the product stays fully usable; only the metered part is closed.
+ *
+ * Set with the `VOICE_ACCESS` environment variable. It defaults to `trial`
+ * because a deployment that silently refuses its own owner is worse than one
+ * that spends a little, and the daily cap bounds the damage either way.
+ */
+export type VoiceAccess = "trial" | "allowlist";
+
+export function readVoiceAccess(raw: string | undefined): VoiceAccess {
+  return raw?.trim().toLowerCase() === "allowlist" ? "allowlist" : "trial";
+}
+
+export type DenialReason = "daily_limit" | "invalid_request" | "not_allowed";
 
 export type GrantDecision =
   | { allowed: true; grantedSeconds: number; limits: TierLimits }
@@ -40,8 +61,18 @@ export function decideGrant(input: {
   requestedSeconds: number;
   /** Grants already issued to this user in the last 24 hours. */
   grantsToday: number;
+  /** Deployment policy. Defaults to `trial` for callers that predate it. */
+  access?: VoiceAccess;
+  /** Whether the user has a `voice_entitlements` row of any tier. */
+  entitled?: boolean;
 }): GrantDecision {
   const limits = TIER_LIMITS[input.tier];
+
+  // Checked before anything else: on a closed deployment the answer does not
+  // depend on what was asked for or on how much has been used.
+  if (input.access === "allowlist" && !input.entitled) {
+    return { allowed: false, reason: "not_allowed", limits };
+  }
 
   if (
     !Number.isFinite(input.requestedSeconds) ||
@@ -72,6 +103,9 @@ export function denialMessage(
   tier: VoiceTier,
 ): string {
   if (reason === "invalid_request") return "練習長度不正確。";
+  if (reason === "not_allowed") {
+    return "這個站台的語音練習僅開放給已授權的帳號。其他功能都可以正常使用。";
+  }
 
   return tier === "trial"
     ? "試用每天只能練習一次。登入並取得完整存取後就沒有這個限制。"
