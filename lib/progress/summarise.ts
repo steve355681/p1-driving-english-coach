@@ -1,3 +1,4 @@
+import { buildWall, type FeedbackRef, type PhraseRow, type WallPhrase } from "@/lib/progress/rhythm";
 import type { FeedbackType, Session } from "@/types";
 
 /**
@@ -28,12 +29,6 @@ export interface ErrorTheme {
   count: number;
 }
 
-export interface Expression {
-  phrase: string;
-  meaningZh: string;
-  sessionId: string;
-}
-
 export interface WeekBucket {
   /** ISO date of the Monday that starts the week, in UTC. */
   start: string;
@@ -46,8 +41,10 @@ export interface ProgressSummary {
   /** Sessions that produced real speaking time, not launcher visits. */
   sessionCount: number;
   practisedMinutes: number;
-  errorThemes: ErrorTheme[];
-  expressions: Expression[];
+  /** This week only — see `weekNote` for the context that makes it readable. */
+  weekThemes: ErrorTheme[];
+  weekNote: string;
+  expressions: WallPhrase[];
   weeks: WeekBucket[];
 }
 
@@ -94,39 +91,76 @@ function shiftWeeks(isoDate: string, weeks: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-export function summariseProgress(input: {
-  sessions: Session[];
-  /** One entry per feedback item across all the caller's sessions. */
-  feedbackTypes: FeedbackType[];
-  vocabulary: Expression[];
-  now: Date;
-}): ProgressSummary {
-  const practised = input.sessions
-    .map((session) => ({ session, minutes: practisedMinutes(session) }))
-    .filter((entry) => entry.minutes > 0);
-
+function countThemes(types: FeedbackType[]): ErrorTheme[] {
   const counts = new Map<FeedbackType, number>();
-  for (const type of input.feedbackTypes) {
-    counts.set(type, (counts.get(type) ?? 0) + 1);
-  }
+  for (const type of types) counts.set(type, (counts.get(type) ?? 0) + 1);
 
-  const errorThemes: ErrorTheme[] = [...counts.entries()]
+  return [...counts.entries()]
     .map(([type, count]) => ({
       type,
       label: FEEDBACK_TYPE_LABELS[type] ?? type,
       count,
     }))
     .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
+}
 
-  // The same phrase can come out of several reviews. Showing it twice makes the
-  // wall look padded and buries the phrases that only appeared once.
-  const seen = new Set<string>();
-  const expressions = input.vocabulary.filter((item) => {
-    const key = item.phrase.trim().toLowerCase();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+/**
+ * The line under this week's chart.
+ *
+ * Written from the numbers rather than by a model. It has to render instantly,
+ * offline, and on every dashboard load — a metered call for one sentence would
+ * cost money every time the page is opened, and say less than the comparison
+ * does. It is allowed to be encouraging but not to be untrue: a week with no
+ * practice is told plainly, because a dashboard that congratulates you for
+ * nothing is worth nothing.
+ */
+function weeklyNote(input: {
+  sessions: number;
+  minutes: number;
+  lastWeekSessions: number;
+  lastWeekMinutes: number;
+  themes: ErrorTheme[];
+}): string {
+  if (input.sessions === 0) {
+    return input.lastWeekSessions > 0
+      ? `上週練了 ${input.lastWeekSessions} 次，本週還沒開始。挑一個 10 分鐘的主題就能接回節奏。`
+      : "本週還沒有練習紀錄。第一次最難，挑 10 分鐘、選一個熟悉的主題就好。";
+  }
+
+  const opening = `本週練了 ${input.sessions} 次、${input.minutes} 分鐘。`;
+
+  if (input.themes.length === 0) {
+    return `${opening}還沒有回顧內容 —— 打開任何一次練習，回顧就會產生。`;
+  }
+
+  const top = input.themes[0];
+  const total = input.themes.reduce((sum, theme) => sum + theme.count, 0);
+  const focus = `回顧挑出 ${total} 個可以修的地方，最常出現的是「${top.label}」。`;
+
+  let trend: string;
+  if (input.lastWeekMinutes === 0) {
+    trend = "這週先當基準，下週就有得比了。";
+  } else if (input.minutes > input.lastWeekMinutes) {
+    trend = `比上週多開口 ${input.minutes - input.lastWeekMinutes} 分鐘，保持住。`;
+  } else if (input.minutes === input.lastWeekMinutes) {
+    trend = "和上週一樣多，穩定比爆發有用。";
+  } else {
+    trend = `比上週少了 ${input.lastWeekMinutes - input.minutes} 分鐘，補一次短的就追回來了。`;
+  }
+
+  return `${opening}${focus}${trend}`;
+}
+
+export function summariseProgress(input: {
+  sessions: Session[];
+  /** One entry per feedback item across all the caller's sessions. */
+  feedback: FeedbackRef[];
+  vocabulary: PhraseRow[];
+  now: Date;
+}): ProgressSummary {
+  const practised = input.sessions
+    .map((session) => ({ session, minutes: practisedMinutes(session) }))
+    .filter((entry) => entry.minutes > 0);
 
   // Fixed-width buckets, always the same eight weeks whether or not anything
   // was practised. A chart that only shows weeks with sessions hides exactly
@@ -152,13 +186,36 @@ export function summariseProgress(input: {
   }
   for (const week of weeks) week.minutes = Math.round(week.minutes);
 
+  // Feedback is bucketed by when the *session* happened, not when the review
+  // was generated. A drive reviewed days later still belongs to the week the
+  // learner was actually speaking.
+  const lastWeek = shiftWeeks(thisWeek, -1);
+  const sessionWeeks = new Map(
+    input.sessions.map((session) => [session.id, weekStart(session.startedAt)]),
+  );
+  const weekThemes = countThemes(
+    input.feedback
+      .filter((item) => sessionWeeks.get(item.sessionId) === thisWeek)
+      .map((item) => item.type),
+  );
+
+  const current = byStart.get(thisWeek);
+  const previous = byStart.get(lastWeek);
+
   return {
     sessionCount: practised.length,
     practisedMinutes: Math.round(
       practised.reduce((sum, entry) => sum + entry.minutes, 0),
     ),
-    errorThemes,
-    expressions,
+    weekThemes,
+    weekNote: weeklyNote({
+      sessions: current?.sessions ?? 0,
+      minutes: current?.minutes ?? 0,
+      lastWeekSessions: previous?.sessions ?? 0,
+      lastWeekMinutes: previous?.minutes ?? 0,
+      themes: weekThemes,
+    }),
+    expressions: buildWall(input.vocabulary, input.now),
     weeks,
   };
 }

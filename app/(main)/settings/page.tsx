@@ -2,13 +2,17 @@ import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AccountPanel } from "@/components/settings/AccountPanel";
 import { Card } from "@/components/ui/Card";
-import { PlaceholderNotice } from "@/components/ui/PlaceholderNotice";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { LEVELS, ROUTES } from "@/lib/constants";
+import { ROUTES } from "@/lib/constants";
 
 /**
- * Preferences and privacy. Sign-in is live; the level and privacy sections are
- * still display-only.
+ * Preferences and privacy.
+ *
+ * There is no default-level setting. The level is picked per session in the
+ * launcher, where it is about to be used and where changing it costs one tap —
+ * a second copy in settings only added a place for the two to disagree.
+ * `user_profiles.english_level` stays in the schema for a future path that
+ * needs a stored preference.
  */
 export default function SettingsPage() {
   return (
@@ -16,22 +20,6 @@ export default function SettingsPage() {
       <PageHeader title="設定" subtitle="偏好與隱私說明。" />
 
       <div className="flex flex-col gap-7">
-        <PlaceholderNotice>設定尚未儲存（Phase 2）</PlaceholderNotice>
-
-        <section>
-          <SectionHeading title="預設程度" />
-          <Card>
-            <ul className="flex flex-col gap-3">
-              {LEVELS.map((level) => (
-                <li key={level.value} className="flex flex-col">
-                  <span className="text-sm text-fg">{level.label}</span>
-                  <span className="text-xs text-muted">{level.hint}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </section>
-
         <section>
           <SectionHeading title="主題" />
           <Link

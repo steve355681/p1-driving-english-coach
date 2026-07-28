@@ -57,6 +57,9 @@ export function toVocabularyItem(row: VocabularyItemRow): VocabularyItem {
     meaningZh: row.meaning_zh,
     exampleEn: row.example_en,
     category: row.category,
+    reviewStage: row.review_stage,
+    lastReviewedAt: row.last_reviewed_at,
+    createdAt: row.created_at,
   };
 }
 

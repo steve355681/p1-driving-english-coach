@@ -134,13 +134,20 @@ export async function loadProgress(): Promise<Sourced<ProgressSummary>> {
     return {
       data: summariseProgress({
         sessions: placeholderSessions,
-        feedbackTypes: placeholderFeedbackTypes,
+        feedback: placeholderFeedbackTypes.map((type) => ({
+          type,
+          sessionId: placeholderSessions[0].id,
+        })),
         vocabulary: placeholderReview.vocabulary.map((item) => ({
+          id: item.id,
           phrase: item.phrase,
           meaningZh: item.meaningZh,
           sessionId: item.sessionId,
+          createdAt: item.createdAt,
+          reviewStage: item.reviewStage,
+          lastReviewedAt: item.lastReviewedAt,
         })),
-        now: new Date(placeholderSessions[0].startedAt),
+        now: new Date(placeholderSessions[0].endedAt ?? ""),
       }),
       placeholder: true,
     };

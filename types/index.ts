@@ -146,6 +146,10 @@ export interface VocabularyItem {
   meaningZh: string;
   exampleEn: string;
   category: string;
+  /** Spaced-review progress. 0 until the learner first taps it on the wall. */
+  reviewStage: number;
+  lastReviewedAt: string | null;
+  createdAt: string;
 }
 
 /** What the review page renders (FR-4). */

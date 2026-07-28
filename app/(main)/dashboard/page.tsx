@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ExpressionWall } from "@/components/dashboard/ExpressionWall";
 import { WeeklyChart } from "@/components/dashboard/WeeklyChart";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -94,7 +95,11 @@ export default function DashboardPage() {
               action={<ButtonLink href={ROUTES.launcher}>開始練習</ButtonLink>}
             />
           ) : (
-            <ul className="flex flex-col gap-3">
+            /* Three fit above the fold; the rest scroll in place rather than
+               pushing the recurring-problem and review sections off screen.
+               max-h is 3 cards plus a sliver of the fourth, so it reads as
+               scrollable without a scrollbar being visible on iOS. */
+            <ul className="flex max-h-[15.5rem] flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
               {sessions.map((session) => {
                 const minutes = Math.round(practisedMinutes(session));
                 return (
@@ -122,11 +127,11 @@ export default function DashboardPage() {
         </section>
 
         <section>
-          <SectionHeading title="重複出現的問題" hint="跨場次累積" />
-          {progress && progress.errorThemes.length > 0 ? (
-            <Card>
+          <SectionHeading title="重複出現的問題" hint="本週累積" />
+          <Card>
+            {progress && progress.weekThemes.length > 0 ? (
               <ul className="flex flex-col gap-3">
-                {progress.errorThemes.map((theme) => (
+                {progress.weekThemes.map((theme) => (
                   <li key={theme.type}>
                     <div className="flex items-baseline justify-between text-xs">
                       <span className="text-fg">{theme.label}</span>
@@ -138,42 +143,32 @@ export default function DashboardPage() {
                       <div
                         className="h-full rounded-full bg-brand"
                         style={{
-                          width: `${(theme.count / progress.errorThemes[0].count) * 100}%`,
+                          width: `${(theme.count / progress.weekThemes[0].count) * 100}%`,
                         }}
                       />
                     </div>
                   </li>
                 ))}
               </ul>
-            </Card>
-          ) : (
-            <EmptyState
-              title="還沒有足夠資料"
-              description="等練習有了回顧之後，這裡會統計你最常犯的錯誤類型。"
-            />
-          )}
+            ) : (
+              <p className="text-xs text-muted">本週還沒有回顧抓出的問題。</p>
+            )}
+            {/* Written from the numbers, not by a model — see `weeklyNote`. */}
+            <p className="mt-4 border-t border-line pt-3 text-xs leading-relaxed text-fg">
+              {progress ? progress.weekNote : "載入中…"}
+            </p>
+          </Card>
         </section>
 
         <section>
-          <SectionHeading title="表達牆" hint="練習中出現過、值得留著的說法" />
-          {progress && progress.expressions.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {progress.expressions.map((item) => (
-                <Link
-                  key={item.phrase}
-                  href={ROUTES.review(item.sessionId)}
-                  title={item.meaningZh}
-                  className="rounded-xl border border-line bg-surface px-3 py-2 text-xs transition-colors hover:bg-surface-2"
-                >
-                  {item.phrase}
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="還沒有收集到說法"
-              description="每次練習的回顧會挑出值得記住的字詞，累積在這裡。"
+          <SectionHeading title="表達牆" hint="依複習節奏亮起" />
+          {progress ? (
+            <ExpressionWall
+              phrases={progress.expressions}
+              placeholder={placeholder}
             />
+          ) : (
+            <p className="text-sm text-muted">載入中…</p>
           )}
         </section>
       </div>

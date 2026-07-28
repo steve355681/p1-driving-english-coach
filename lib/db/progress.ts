@@ -15,13 +15,13 @@
 import { requireSupabase } from "@/lib/supabase/client";
 import { toSession } from "@/lib/db/mappers";
 import { summariseProgress, type ProgressSummary } from "@/lib/progress/summarise";
+import { REVIEW_STAGES } from "@/lib/progress/rhythm";
 import type { FeedbackType } from "@/types";
 
 /** Enough for years of daily practice, and a hard stop on an unbounded read. */
 const SESSION_LIMIT = 500;
 const FEEDBACK_LIMIT = 2000;
-/** The wall shows the most recent; older phrases are still in each review. */
-const VOCABULARY_LIMIT = 200;
+const VOCABULARY_LIMIT = 400;
 
 export async function getProgressSummary(): Promise<ProgressSummary> {
   const supabase = requireSupabase();
@@ -32,10 +32,16 @@ export async function getProgressSummary(): Promise<ProgressSummary> {
       .select()
       .order("started_at", { ascending: false })
       .limit(SESSION_LIMIT),
-    supabase.from("feedback_items").select("type").limit(FEEDBACK_LIMIT),
+    supabase
+      .from("feedback_items")
+      .select("type, session_id")
+      .limit(FEEDBACK_LIMIT),
     supabase
       .from("vocabulary_items")
-      .select("phrase, meaning_zh, session_id")
+      .select("id, phrase, meaning_zh, session_id, created_at, review_stage, last_reviewed_at")
+      // Finished phrases have left the wall for good, so there is no reason to
+      // fetch them — and excluding them keeps the cap above meaningful.
+      .lt("review_stage", REVIEW_STAGES)
       .order("created_at", { ascending: false })
       .limit(VOCABULARY_LIMIT),
   ]);
@@ -46,13 +52,18 @@ export async function getProgressSummary(): Promise<ProgressSummary> {
 
   return summariseProgress({
     sessions: (sessionResult.data ?? []).map(toSession),
-    feedbackTypes: (feedbackResult.data ?? []).map(
-      (row) => row.type as FeedbackType,
-    ),
+    feedback: (feedbackResult.data ?? []).map((row) => ({
+      type: row.type as FeedbackType,
+      sessionId: row.session_id,
+    })),
     vocabulary: (vocabularyResult.data ?? []).map((row) => ({
+      id: row.id,
       phrase: row.phrase,
       meaningZh: row.meaning_zh,
       sessionId: row.session_id,
+      createdAt: row.created_at,
+      reviewStage: row.review_stage,
+      lastReviewedAt: row.last_reviewed_at,
     })),
     now: new Date(),
   });

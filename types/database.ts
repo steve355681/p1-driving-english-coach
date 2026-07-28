@@ -116,6 +116,9 @@ export type VocabularyItemRow = {
   meaning_zh: string;
   example_en: string;
   category: string;
+  /** How many review intervals the phrase has cleared; see `lib/progress/rhythm.ts`. */
+  review_stage: number;
+  last_reviewed_at: string | null;
   created_at: string;
 }
 
@@ -135,11 +138,12 @@ export type SessionUpdate = Partial<
 export type FeedbackItemInsert = Omit<FeedbackItemRow, "id" | "created_at"> &
   Partial<Pick<FeedbackItemRow, "id">>;
 
+/** The review-schedule columns are defaulted by Postgres, not by generation. */
 export type VocabularyItemInsert = Omit<
   VocabularyItemRow,
-  "id" | "created_at"
+  "id" | "created_at" | "review_stage" | "last_reviewed_at"
 > &
-  Partial<Pick<VocabularyItemRow, "id">>;
+  Partial<Pick<VocabularyItemRow, "id" | "review_stage" | "last_reviewed_at">>;
 
 export type UserProfileUpdate = Partial<
   Omit<UserProfileRow, "id" | "created_at" | "updated_at">

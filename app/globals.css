@@ -22,6 +22,20 @@
   --color-state-paused: #fbbf24;
   --color-state-error: #f87171;
 
+  /*
+   * Expression wall, one hue per review interval. Used as low-opacity tints on
+   * the dark surface, so they read as a soft wash rather than as status.
+   * Deliberately not the --color-state-* set: red on a vocabulary chip means
+   * "you got this wrong", which is not what a due review is.
+   * Warm to cool as the intervals widen, ending on the brand green.
+   */
+  --color-rhythm-0: #f472b6;
+  --color-rhythm-1: #fb923c;
+  --color-rhythm-2: #fbbf24;
+  --color-rhythm-3: #38bdf8;
+  --color-rhythm-4: #a78bfa;
+  --color-rhythm-5: #34d399;
+
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
 }

@@ -112,6 +112,9 @@ export const placeholderReview: SessionReview = {
       meaningZh: "停滯、卡住",
       exampleEn: "The project stalled after the review.",
       category: "work",
+      reviewStage: 0,
+      lastReviewedAt: null,
+      createdAt: "2026-07-24T08:27:00.000Z",
     },
     {
       id: "v2",
@@ -120,6 +123,9 @@ export const placeholderReview: SessionReview = {
       meaningZh: "暫緩中",
       exampleEn: "The launch is on hold until next month.",
       category: "work",
+      reviewStage: 1,
+      lastReviewedAt: "2026-07-23T08:00:00.000Z",
+      createdAt: "2026-07-22T08:15:00.000Z",
     },
     {
       id: "v3",
@@ -128,6 +134,9 @@ export const placeholderReview: SessionReview = {
       meaningZh: "帶某人逐步了解",
       exampleEn: "Let me walk you through the plan.",
       category: "work",
+      reviewStage: 2,
+      lastReviewedAt: "2026-07-23T08:00:00.000Z",
+      createdAt: "2026-07-19T08:50:00.000Z",
     },
     {
       id: "v4",
@@ -136,6 +145,9 @@ export const placeholderReview: SessionReview = {
       meaningZh: "很趕的期限",
       exampleEn: "We're working with a tight deadline.",
       category: "work",
+      reviewStage: 3,
+      lastReviewedAt: "2026-07-18T08:00:00.000Z",
+      createdAt: "2026-07-11T08:00:00.000Z",
     },
     {
       id: "v5",
@@ -144,11 +156,20 @@ export const placeholderReview: SessionReview = {
       meaningZh: "等待（某人回覆）",
       exampleEn: "I'm waiting on his reply.",
       category: "general",
+      reviewStage: 4,
+      lastReviewedAt: "2026-07-09T08:00:00.000Z",
+      createdAt: "2026-07-02T08:00:00.000Z",
     },
   ],
   nextRecommendation: "下次練習用過去式描述「上週做了什麼」，主題選 Work & Career。",
   transcriptTurns: 0,
 };
+
+/**
+ * The demo phrases carry staggered review progress on purpose, so the
+ * expression wall shows its rhythm — some due, some still inside an interval —
+ * instead of a flat row of identical chips.
+ */
 
 /**
  * Corrections accumulated across the demo sessions, for the dashboard's

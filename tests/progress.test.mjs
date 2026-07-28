@@ -29,7 +29,7 @@ function session(overrides) {
   };
 }
 
-const empty = { sessions: [], feedbackTypes: [], vocabulary: [], now: NOW };
+const empty = { sessions: [], feedback: [], vocabulary: [], now: NOW };
 
 test("practised time is what elapsed, not what was requested", () => {
   // The launcher asked for 15; the trial grant cut it to 3.
@@ -75,44 +75,26 @@ test("abandoned sessions count as neither time nor a session", () => {
 test("error themes are counted and ordered by how often they recur", () => {
   const result = summariseProgress({
     ...empty,
-    feedbackTypes: [
+    sessions: [session({ id: "s1" })],
+    feedback: [
       "word_choice",
       "grammar",
       "grammar",
       "fluency",
       "grammar",
       "word_choice",
-    ],
+    ].map((type) => ({ type, sessionId: "s1" })),
   });
 
   assert.deepEqual(
-    result.errorThemes.map((theme) => [theme.type, theme.count]),
+    result.weekThemes.map((theme) => [theme.type, theme.count]),
     [
       ["grammar", 3],
       ["word_choice", 2],
       ["fluency", 1],
     ],
   );
-  assert.equal(result.errorThemes[0].label, "文法");
-});
-
-test("the expression wall keeps the first sighting of a repeated phrase", () => {
-  const result = summariseProgress({
-    ...empty,
-    vocabulary: [
-      { phrase: "on hold", meaningZh: "暫緩中", sessionId: "new" },
-      { phrase: "  On Hold ", meaningZh: "暫緩中", sessionId: "old" },
-      { phrase: "stall", meaningZh: "卡住", sessionId: "old" },
-      { phrase: "   ", meaningZh: "", sessionId: "old" },
-    ],
-  });
-
-  assert.deepEqual(
-    result.expressions.map((item) => item.phrase),
-    ["on hold", "stall"],
-  );
-  // Rows arrive newest first, so the surviving copy links to the newest review.
-  assert.equal(result.expressions[0].sessionId, "new");
+  assert.equal(result.weekThemes[0].label, "文法");
 });
 
 test("the weekly chart always spans the full window, gaps included", () => {

@@ -2,13 +2,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { FeedbackItem, VocabularyItem } from "@/types";
 
+/** What generation supplies; the review schedule starts at the Postgres default. */
+type GeneratedVocabulary = Pick<
+  VocabularyItem,
+  "phrase" | "meaningZh" | "exampleEn" | "category"
+>;
+
 /** What generation produces and the review page renders. */
 export interface ReviewContent {
   summary: string;
   nextRecommendation: string;
   alternatives: string[];
   corrections: Array<Omit<FeedbackItem, "id" | "sessionId">>;
-  vocabulary: Array<Omit<VocabularyItem, "id" | "sessionId">>;
+  vocabulary: GeneratedVocabulary[];
 }
 
 /**
