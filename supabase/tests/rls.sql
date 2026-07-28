@@ -40,6 +40,7 @@ end $$;
 grant usage on schema public to anon, authenticated;
 
 \ir ../migrations/20260727100000_init.sql
+\ir ../migrations/20260728090000_voice_entitlements.sql
 
 -- Supabase grants these to anon/authenticated out of the box; the stub has to
 -- match, or every statement below fails on table permissions before RLS is
@@ -139,6 +140,35 @@ values ('11111111-1111-1111-1111-111111111111','x',15,'basic','{"a":1}'::jsonb);
 update public.sessions set summary = 'touched' where duration_minutes = 5;
 select updated_at > created_at as updated_at_moved
 from public.sessions where duration_minutes = 5;
+
+-- ---------------------------------------------------------------------------
+-- voice entitlements: a privilege table, so the interesting case is whether the
+-- user it restricts can raise it
+-- ---------------------------------------------------------------------------
+
+reset role;
+insert into public.voice_entitlements (user_id, note)
+values ('22222222-2222-2222-2222-222222222222', 'owner');
+
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+\echo '--- V1: A cannot grant themselves full access -- expect reject'
+insert into public.voice_entitlements (user_id, tier)
+values ('11111111-1111-1111-1111-111111111111', 'full');
+
+\echo '--- V2: A cannot upgrade an existing row -- expect UPDATE 0'
+update public.voice_entitlements set tier = 'full';
+
+\echo '--- V3: A cannot delete Bs entitlement -- expect DELETE 0'
+delete from public.voice_entitlements;
+
+\echo '--- V4: A cannot even see Bs entitlement (expect 0)'
+select count(*) as visible from public.voice_entitlements;
+
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+\echo '--- V5: B sees their own entitlement (expect 1, full)'
+select count(*) as visible, max(tier) as tier from public.voice_entitlements;
 
 reset role;
 \echo '--- C10: deleting the auth user cascades (expect 0, 0, 0)'

@@ -1,12 +1,13 @@
 import { PageHeader } from "@/components/layout/PageHeader";
+import { AccountPanel } from "@/components/settings/AccountPanel";
 import { Card } from "@/components/ui/Card";
 import { PlaceholderNotice } from "@/components/ui/PlaceholderNotice";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { LEVELS } from "@/lib/constants";
 
 /**
- * Preferences and privacy. Nothing here persists yet — it lands with the data
- * layer in Phase 2 and the auth decision in Phase 7.
+ * Preferences and privacy. Sign-in is live; the level and privacy sections are
+ * still display-only.
  */
 export default function SettingsPage() {
   return (
@@ -32,12 +33,7 @@ export default function SettingsPage() {
 
         <section>
           <SectionHeading title="帳號" />
-          <Card>
-            <p className="text-sm text-fg">目前為匿名試用模式</p>
-            <p className="mt-1.5 text-xs leading-relaxed text-muted">
-              紀錄只綁在這個瀏覽器上。登入功能會在之後加入，屆時可以把既有紀錄接過去。
-            </p>
-          </Card>
+          <AccountPanel />
         </section>
 
         <section>

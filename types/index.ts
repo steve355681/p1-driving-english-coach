@@ -46,6 +46,19 @@ export type FeedbackType =
 
 export type FeedbackSeverity = "low" | "medium" | "high";
 
+/**
+ * How much metered voice a user may spend.
+ * `trial` is the default for everyone, including users with no entitlement row.
+ */
+export type VoiceTier = "trial" | "full";
+
+export interface AuthState {
+  userId: string | null;
+  email: string | null;
+  /** True for a browser that has never linked an email. */
+  isAnonymous: boolean;
+}
+
 export interface Topic {
   id: string;
   /** English label — this is what the user will actually speak about. */

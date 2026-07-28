@@ -22,6 +22,7 @@ import type {
   FeedbackType,
   SessionStatus,
   TranscriptTurn,
+  VoiceTier,
 } from "@/types";
 
 export type UserProfileRow = {
@@ -64,6 +65,14 @@ export type FeedbackItemRow = {
   improved_text: string;
   explanation: string;
   severity: FeedbackSeverity;
+  created_at: string;
+}
+
+/** Read-only from the client — see the migration for why. */
+export type VoiceEntitlementRow = {
+  user_id: string;
+  tier: VoiceTier;
+  note: string | null;
   created_at: string;
 }
 
@@ -127,6 +136,13 @@ export type Database = {
         Row: VocabularyItemRow;
         Insert: VocabularyItemInsert;
         Update: Partial<VocabularyItemInsert>;
+        Relationships: [];
+      };
+      voice_entitlements: {
+        Row: VoiceEntitlementRow;
+        // Readable only; there is no client-side write path by design.
+        Insert: never;
+        Update: never;
         Relationships: [];
       };
     };
