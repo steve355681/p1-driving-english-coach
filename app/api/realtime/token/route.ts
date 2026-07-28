@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   // session, which would also corrupt that account's usage history.
   const { data: session, error: sessionError } = await admin
     .from("sessions")
-    .select("id, user_id, level, topic")
+    .select("id, user_id, level, topic, topic_id")
     .eq("id", sessionId)
     .maybeSingle();
 
@@ -102,12 +102,29 @@ export async function POST(request: Request) {
     );
   }
 
+  // Saved topics carry the learner's own notes. Read server-side rather than
+  // trusting the client to send them: the brief goes straight into a metered
+  // prompt, so its size and content must not be caller-controlled.
+  let material: string | null = null;
+  if (session.topic_id) {
+    const { data: topic } = await admin
+      .from("topics")
+      .select("brief, notes, user_id")
+      .eq("id", session.topic_id)
+      .maybeSingle();
+
+    if (topic && topic.user_id === user.id) {
+      material = topic.brief ?? topic.notes;
+    }
+  }
+
   const baseSession = {
     type: "realtime",
     model: REALTIME_MODEL,
     instructions: coachInstructions({
       topic: session.topic,
       level: session.level,
+      material,
     }),
   };
 

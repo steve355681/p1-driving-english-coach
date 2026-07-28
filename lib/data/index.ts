@@ -63,6 +63,7 @@ export async function startSession(input: {
   topic: string;
   durationMinutes: SessionDuration;
   level: EnglishLevel;
+  topicId?: string | null;
 }): Promise<Sourced<Session>> {
   if (!isSupabaseConfigured()) {
     const session: Session = {

@@ -1,20 +1,23 @@
 import type {
   EnglishLevel,
+  PresetTopic,
   SessionDuration,
   SessionStatus,
-  Topic,
 } from "@/types";
 
 export const ROUTES = {
   landing: "/",
   launcher: "/app",
   session: (id: string) => `/session/${id}`,
+  topics: "/topics",
+  newTopic: "/topics/new",
+  editTopic: (id: string) => `/topics/${id}`,
   review: (id: string) => `/review/${id}`,
   dashboard: "/dashboard",
   settings: "/settings",
 } as const;
 
-export const TOPICS: Topic[] = [
+export const TOPICS: PresetTopic[] = [
   { id: "daily-life", label: "Daily Life", hint: "日常生活、通勤、週末" },
   { id: "work", label: "Work & Career", hint: "工作、同事、專案進度" },
   { id: "travel", label: "Travel", hint: "旅行、訂房、問路" },
@@ -36,6 +39,17 @@ export const LEVELS: Array<{ value: EnglishLevel; label: string; hint: string }>
   ];
 
 export const DEFAULT_LEVEL: EnglishLevel = "B1";
+
+/**
+ * Notes longer than this are condensed before the coach sees them.
+ *
+ * The coach's brief is re-billed on every conversational turn, so a long
+ * article pasted in whole would quietly undo the cost work. Notes that came
+ * from a summarising tool are usually well under this, so the common case
+ * costs nothing extra.
+ */
+export const TOPIC_CONDENSE_THRESHOLD = 1500;
+export const TOPIC_NOTES_MAX = 20000;
 
 /** 5 → 60 minutes in 5-minute steps. Must stay in sync with `SessionDuration`. */
 export const DURATIONS: SessionDuration[] = Array.from(

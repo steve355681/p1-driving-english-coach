@@ -60,12 +60,32 @@ export interface AuthState {
   isAnonymous: boolean;
 }
 
-export interface Topic {
+/** One of the built-in conversation starters. */
+export interface PresetTopic {
   id: string;
   /** English label — this is what the user will actually speak about. */
   label: string;
   /** Chinese hint shown in the launcher UI. */
   hint: string;
+}
+
+/** Notes the learner saved to practise against, reusable across sessions. */
+export interface Topic {
+  id: string;
+  userId: string;
+  title: string;
+  /** What was pasted. Editable. */
+  notes: string;
+  /** Set only when `notes` was too long to give the coach directly. */
+  brief: string | null;
+  useCount: number;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+/** What the coach is actually given — the brief when there is one. */
+export function topicMaterial(topic: Topic) {
+  return topic.brief ?? topic.notes;
 }
 
 export interface UserProfile {
@@ -86,6 +106,8 @@ export interface TranscriptTurn {
 
 export interface Session {
   id: string;
+  /** Null for preset topics and for sessions whose topic was deleted. */
+  topicId?: string | null;
   /**
    * Never null, including in anonymous demo mode — Supabase anonymous sign-in
    * issues a real auth user, which is what lets row level security protect a

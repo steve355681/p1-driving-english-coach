@@ -64,13 +64,32 @@ const LEVEL_GUIDANCE: Record<EnglishLevel, string> = {
 export function coachInstructions(input: {
   topic: string;
   level: EnglishLevel;
+  /** The learner's own notes, when they picked a saved topic. */
+  material?: string | null;
 }) {
+  const material = input.material?.trim();
+
   return [
     "You are an English speaking coach for a commuter who is driving.",
     "",
     `Today's topic is: ${input.topic}.`,
     `The learner has set their level to CEFR ${input.level}.`,
     LEVEL_GUIDANCE[input.level],
+    ...(material
+      ? [
+          "",
+          "The learner brought their own material for today. Have a",
+          "conversation about it — draw them out on it, ask what they make of",
+          "it, disagree where there is something to disagree with. Do not quiz",
+          "them on it and do not read it back to them; they brought it, they",
+          "have seen it. If they take the conversation somewhere adjacent, go",
+          "with them.",
+          "",
+          "--- the learner's notes ---",
+          material,
+          "--- end of notes ---",
+        ]
+      : []),
     "",
     "Rules:",
     "- Speak only English, even if the learner uses another language.",

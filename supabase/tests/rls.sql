@@ -43,6 +43,7 @@ grant usage on schema public to anon, authenticated;
 \ir ../migrations/20260728090000_voice_entitlements.sql
 \ir ../migrations/20260728120000_voice_usage.sql
 \ir ../migrations/20260728150000_cefr_levels.sql
+\ir ../migrations/20260728180000_topics.sql
 
 -- Supabase grants these to anon/authenticated out of the box; the stub has to
 -- match, or every statement below fails on table permissions before RLS is
@@ -204,7 +205,47 @@ set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 \echo '--- U6: B cannot see As usage (expect 0)'
 select count(*) as b_sees from public.voice_usage;
 
+-- ---------------------------------------------------------------------------
+-- topics: no privilege and no metering here, so the owner gets full control.
+-- The only thing that matters is that it is theirs.
+-- ---------------------------------------------------------------------------
+
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+\echo '--- P1: A creates a topic -- expect accept'
+insert into public.topics (user_id, title, notes)
+values ('11111111-1111-1111-1111-111111111111', 'AI and work', 'some notes');
+
+\echo '--- P2: A can edit their own topic (expect UPDATE 1)'
+update public.topics set title = 'AI and jobs';
+
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+
+\echo '--- P3: B cannot see As topic (expect 0)'
+select count(*) as b_sees from public.topics;
+
+\echo '--- P4: B cannot edit or delete it (expect UPDATE 0, DELETE 0)'
+update public.topics set notes = 'hijacked';
+delete from public.topics;
+
+\echo '--- P5: B cannot create a topic owned by A -- expect reject'
+insert into public.topics (user_id, title, notes)
+values ('11111111-1111-1111-1111-111111111111', 'x', 'x');
+
+\echo '--- P6: an empty title is rejected -- expect reject'
+insert into public.topics (user_id, title, notes)
+values ('22222222-2222-2222-2222-222222222222', '   ', 'x');
+
 reset role;
+\echo '--- P7: deleting a topic keeps the session and its label (expect 1 row, topic_id null)'
+insert into public.sessions (user_id, topic, topic_id, duration_minutes, level)
+select '11111111-1111-1111-1111-111111111111', 'AI and jobs', id, 15, 'B1'
+from public.topics limit 1;
+delete from public.topics;
+select count(*) as sessions_kept, count(topic_id) as still_linked
+from public.sessions where topic = 'AI and jobs';
+
 \echo '--- C10: deleting the auth user cascades (expect 0, 0, 0)'
 delete from auth.users where id = '11111111-1111-1111-1111-111111111111';
 select

@@ -17,6 +17,7 @@ import type {
 export function toSession(row: SessionRow): Session {
   return {
     id: row.id,
+    topicId: row.topic_id,
     userId: row.user_id,
     topic: row.topic,
     // The column is constrained to the same 5-minute grid as SessionDuration,

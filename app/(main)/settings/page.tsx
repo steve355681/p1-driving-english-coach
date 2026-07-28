@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AccountPanel } from "@/components/settings/AccountPanel";
 import { Card } from "@/components/ui/Card";
 import { PlaceholderNotice } from "@/components/ui/PlaceholderNotice";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { LEVELS } from "@/lib/constants";
+import { LEVELS, ROUTES } from "@/lib/constants";
 
 /**
  * Preferences and privacy. Sign-in is live; the level and privacy sections are
@@ -29,6 +30,20 @@ export default function SettingsPage() {
               ))}
             </ul>
           </Card>
+        </section>
+
+        <section>
+          <SectionHeading title="主題" />
+          <Link
+            href={ROUTES.topics}
+            className="flex min-h-14 items-center justify-between rounded-2xl border border-line bg-surface px-4 transition-colors hover:bg-surface-2"
+          >
+            <span className="text-sm text-fg">我的主題</span>
+            <span className="text-sm text-muted">→</span>
+          </Link>
+          <p className="mt-1.5 text-xs text-muted">
+            管理貼上的筆記，可以重複用來練習。
+          </p>
         </section>
 
         <section>

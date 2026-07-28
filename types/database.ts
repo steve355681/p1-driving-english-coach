@@ -35,9 +35,29 @@ export type UserProfileRow = {
   updated_at: string;
 }
 
+export type TopicRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  notes: string;
+  brief: string | null;
+  use_count: number;
+  last_used_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TopicInsert = Pick<TopicRow, "user_id" | "title" | "notes"> &
+  Partial<Pick<TopicRow, "id" | "brief">>;
+
+export type TopicUpdate = Partial<
+  Omit<TopicRow, "id" | "user_id" | "created_at" | "updated_at">
+>;
+
 export type SessionRow = {
   id: string;
   user_id: string;
+  topic_id: string | null;
   topic: string;
   duration_minutes: number;
   level: EnglishLevel;
@@ -104,7 +124,9 @@ export type SessionInsert = Pick<
   SessionRow,
   "user_id" | "topic" | "duration_minutes" | "level"
 > &
-  Partial<Pick<SessionRow, "id" | "status" | "started_at" | "transcript">>;
+  Partial<
+    Pick<SessionRow, "id" | "status" | "started_at" | "transcript" | "topic_id">
+  >;
 
 export type SessionUpdate = Partial<
   Omit<SessionRow, "id" | "user_id" | "created_at" | "updated_at">
@@ -149,6 +171,12 @@ export type Database = {
         Row: VocabularyItemRow;
         Insert: VocabularyItemInsert;
         Update: Partial<VocabularyItemInsert>;
+        Relationships: [];
+      };
+      topics: {
+        Row: TopicRow;
+        Insert: TopicInsert;
+        Update: TopicUpdate;
         Relationships: [];
       };
       voice_entitlements: {

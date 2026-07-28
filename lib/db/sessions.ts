@@ -23,6 +23,8 @@ export interface CreateSessionInput {
   topic: string;
   durationMinutes: SessionDuration;
   level: EnglishLevel;
+  /** Set when the learner picked one of their saved topics. */
+  topicId?: string | null;
 }
 
 export async function createSession(
@@ -36,6 +38,7 @@ export async function createSession(
     .insert({
       user_id: userId,
       topic: input.topic,
+      topic_id: input.topicId ?? null,
       duration_minutes: input.durationMinutes,
       level: input.level,
       status: "connecting",
