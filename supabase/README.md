@@ -25,19 +25,32 @@ Schema for P1 Driving English Coach. Mirrors `docs/04-technical-architecture.md`
    ```
 3. **Enable anonymous sign-ins**: Authentication → Sign In / Providers →
    Anonymous. Without this the app cannot create sessions — see below.
-4. Copy the project URL and anon key into `.env.local`:
+4. **Put the code in the sign-in emails**: Authentication → Emails → Templates.
+   Add `{{ .Token }}` to both **Magic Link** and **Change Email Address** — for
+   example `驗證碼：{{ .Token }}` above the existing link.
+
+   The app asks for that code rather than relying on the link, because on a
+   phone the link opens inside the mail app's own browser. That browser gets
+   the session and the one the learner is looking at stays anonymous, so the
+   app keeps asking for an address that has already been verified. Both
+   templates are needed: linking an address to an anonymous user goes through
+   the change-email flow, a plain sign-in through the magic-link one.
+
+   Without `{{ .Token }}` the emails still arrive and the links still work —
+   the code field simply has nothing to enter.
+5. Copy the project URL and anon key into `.env.local`:
    ```
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    ```
-5. For voice and review generation, add the service role key (Project Settings
+6. For voice and review generation, add the service role key (Project Settings
    → API) and an OpenAI key. Both are server-side only and must never be
    prefixed `NEXT_PUBLIC_`:
    ```
    SUPABASE_SERVICE_ROLE_KEY=...
    OPENAI_API_KEY=...
    ```
-6. To give yourself the full voice tier, insert an entitlement row. Users
+7. To give yourself the full voice tier, insert an entitlement row. Users
    cannot write this table, which is the point:
    ```sql
    insert into public.voice_entitlements (user_id, tier, note)

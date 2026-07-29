@@ -22,11 +22,20 @@ export async function getAuthState(): Promise<AuthState> {
   };
 }
 
+/**
+ * Which OTP flow the emailed code belongs to.
+ *
+ * Linking an address to an anonymous user goes through Supabase's change-email
+ * flow, which issues a different kind of token from a plain sign-in. Verifying
+ * with the wrong one fails, so the caller has to carry it back.
+ */
+export type VerifyType = "email" | "email_change";
+
 export type SignInOutcome =
-  | { kind: "linked" }
-  | { kind: "signed-in" }
+  | { kind: "linked"; verifyType: VerifyType }
+  | { kind: "signed-in"; verifyType: VerifyType }
   /** The address already belongs to another account. */
-  | { kind: "already-registered" };
+  | { kind: "already-registered"; verifyType: VerifyType };
 
 /**
  * Sends a magic link for `email`.
@@ -54,7 +63,7 @@ export async function requestMagicLink(
       { emailRedirectTo: redirectTo() },
     );
 
-    if (!error) return { kind: "linked" };
+    if (!error) return { kind: "linked", verifyType: "email_change" };
 
     // Supabase reports a taken address differently across versions; match on
     // the code and the message rather than trusting either alone.
@@ -65,11 +74,11 @@ export async function requestMagicLink(
     if (!taken) throw error;
 
     await signInWithEmail(email);
-    return { kind: "already-registered" };
+    return { kind: "already-registered", verifyType: "email" };
   }
 
   await signInWithEmail(email);
-  return { kind: "signed-in" };
+  return { kind: "signed-in", verifyType: "email" };
 }
 
 async function signInWithEmail(email: string) {
@@ -79,6 +88,45 @@ async function signInWithEmail(email: string) {
     options: { emailRedirectTo: redirectTo() },
   });
   if (error) throw error;
+}
+
+/**
+ * Completes sign-in with the code from the email, in this browser.
+ *
+ * The link in the same email also works, but on a phone it usually does not:
+ * tapping it from a mail app opens the mail app's own browser, which is not
+ * the one the learner was using. That browser gets the session and the one on
+ * screen stays anonymous, so the app keeps asking for an email that has in
+ * fact already been verified — repeatedly, which is what this fixes.
+ *
+ * `verifyType` comes from `requestMagicLink`, but the other type is tried too:
+ * asking for a code twice through different paths is easy to do, and the older
+ * email is the one people tend to reach for.
+ */
+export async function verifyCode(
+  email: string,
+  code: string,
+  verifyType: VerifyType,
+): Promise<void> {
+  const supabase = requireSupabase();
+  const token = code.replace(/\D/g, "");
+
+  if (!token) throw new Error("請輸入信件中的驗證碼。");
+
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: verifyType });
+  if (!error) return;
+
+  const other: VerifyType =
+    verifyType === "email" ? "email_change" : "email";
+  const { error: retryError } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: other,
+  });
+
+  if (retryError) {
+    throw new Error("驗證碼不正確或已過期，請重新寄送一次。");
+  }
 }
 
 /**

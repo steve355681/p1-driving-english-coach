@@ -10,21 +10,29 @@ import {
   getAuthState,
   requestMagicLink,
   signOut,
+  verifyCode,
   type SignInOutcome,
 } from "@/lib/supabase/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { toError } from "@/lib/utils";
 
 const SENT_MESSAGE: Record<SignInOutcome["kind"], string> = {
-  linked: "登入連結已寄出。點開之後，這個裝置上的紀錄會保留。",
-  "signed-in": "登入連結已寄出，點開就完成登入。",
+  linked: "驗證信已寄出。完成後，這個裝置上的紀錄會保留。",
+  "signed-in": "驗證信已寄出。",
   "already-registered":
-    "這個 email 已經有帳號了，登入連結已寄出。注意：這個裝置上以匿名身分留下的紀錄不會一起帶過去。",
+    "這個 email 已經有帳號了，驗證信已寄出。注意：這個裝置上以匿名身分留下的紀錄不會一起帶過去。",
 };
 
 export function AccountPanel() {
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  /**
+   * Set once an email has gone out. Its presence is what swaps the form over
+   * to the code field, and it carries which OTP flow the code belongs to.
+   */
+  const [pending, setPending] = useState<SignInOutcome | null>(null);
   const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -70,11 +78,32 @@ export function AccountPanel() {
 
     try {
       const outcome = await requestMagicLink(email.trim());
+      setPending(outcome);
       setSent(SENT_MESSAGE[outcome.kind]);
     } catch (cause) {
       setError(toError(cause).message);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function verify(event: React.FormEvent) {
+    event.preventDefault();
+    if (!pending) return;
+
+    setVerifying(true);
+    setError(null);
+
+    try {
+      await verifyCode(email.trim(), code, pending.verifyType);
+      setPending(null);
+      setSent(null);
+      setCode("");
+      setReloadKey((key) => key + 1);
+    } catch (cause) {
+      setError(toError(cause).message);
+    } finally {
+      setVerifying(false);
     }
   }
 
@@ -113,6 +142,40 @@ export function AccountPanel() {
         >
           登出
         </Button>
+      ) : pending ? (
+        /* The code, not the link. On a phone the link opens in the mail app's
+           own browser, which signs in a browser the learner is not looking at
+           — and this panel then asks again for an address already verified. */
+        <form onSubmit={verify} className="mt-4 flex flex-col gap-2">
+          <input
+            type="text"
+            required
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="6 位數驗證碼"
+            inputMode="numeric"
+            // Lets iOS and Android offer the code straight from the email
+            // rather than making someone memorise it between two apps.
+            autoComplete="one-time-code"
+            maxLength={8}
+            className="min-h-12 rounded-xl border border-line bg-surface-2 px-3 text-center text-lg tracking-[0.3em] tabular-nums text-fg placeholder:text-sm placeholder:tracking-normal placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          />
+          <Button type="submit" fullWidth disabled={verifying}>
+            {verifying ? "驗證中…" : "完成登入"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => {
+              setPending(null);
+              setSent(null);
+              setCode("");
+              setError(null);
+            }}
+            className="min-h-11 text-xs text-muted underline underline-offset-2"
+          >
+            改用其他 email
+          </button>
+        </form>
       ) : (
         <form onSubmit={send} className="mt-4 flex flex-col gap-2">
           <input
@@ -125,7 +188,7 @@ export function AccountPanel() {
             className="min-h-12 rounded-xl border border-line bg-surface-2 px-3 text-sm text-fg placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           />
           <Button type="submit" fullWidth disabled={sending}>
-            {sending ? "寄送中…" : "寄送登入連結"}
+            {sending ? "寄送中…" : "寄送驗證碼"}
           </Button>
         </form>
       )}
@@ -133,6 +196,10 @@ export function AccountPanel() {
       {sent ? (
         <p className="mt-3 rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-xs leading-relaxed text-brand">
           {sent}
+          <span className="mt-1 block text-muted">
+            在上面輸入信中的驗證碼就完成了。信裡的連結也可以用，但在手機上通常會在信箱
+            App 自己的瀏覽器開啟，那邊登入了、這邊還是匿名。
+          </span>
         </p>
       ) : null}
 

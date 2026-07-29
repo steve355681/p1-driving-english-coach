@@ -26,7 +26,18 @@ export function isSupabaseConfigured() {
 /** Returns null when the app is running without a Supabase project. */
 export function getSupabase() {
   if (!url || !anonKey) return null;
-  cached ??= createClient<Database>(url, anonKey);
+  cached ??= createClient<Database>(url, anonKey, {
+    auth: {
+      // All three are the library's defaults. Written out because signing in
+      // again on every visit is the single most disruptive thing this app can
+      // do to a daily habit, and that behaviour should not depend on a default
+      // staying put across a dependency bump.
+      persistSession: true,
+      autoRefreshToken: true,
+      // Still true so the emailed link works when it does open in this browser.
+      detectSessionInUrl: true,
+    },
+  });
   return cached;
 }
 
