@@ -20,7 +20,6 @@ export const FEEDBACK_TYPE_LABELS: Record<FeedbackType, string> = {
   grammar: "文法",
   word_choice: "用詞選擇",
   fluency: "流暢度",
-  pronunciation: "發音",
 };
 
 export interface ErrorTheme {

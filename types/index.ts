@@ -39,11 +39,14 @@ export type SessionStatus =
   | "completed"
   | "error";
 
-export type FeedbackType =
-  | "grammar"
-  | "word_choice"
-  | "pronunciation"
-  | "fluency";
+/**
+ * What the review is allowed to flag.
+ *
+ * No `pronunciation`. This app teaches sentence patterns and word choice; see
+ * the decision in `docs/07`. Everything it sees is either text or car-cabin
+ * audio, and neither can tell a mispronounced word from a misheard one.
+ */
+export type FeedbackType = "grammar" | "word_choice" | "fluency";
 
 export type FeedbackSeverity = "low" | "medium" | "high";
 

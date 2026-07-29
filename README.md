@@ -164,8 +164,11 @@ Known limits, all deliberate and recorded in `docs/07`:
 - No scores. `sessions.score_*` stays null — a number invented from one
   imperfect transcript is fake precision, so the dashboard counts what happened
   instead.
-- No pronunciation feedback. The review reads text, where a mispronunciation
-  and a transcription error look identical.
+- No pronunciation teaching, anywhere. Text cannot distinguish a
+  mispronunciation from a transcription error, and car-cabin audio on
+  speakerphone cannot either — real sessions had the coach correcting words the
+  learner had said correctly. The product teaches sentence patterns and word
+  choice instead.
 - A review is generated once per session and cannot be regenerated from the UI.
 - Transcripts are best-effort. They are guidance about what was said, not a
   record exact enough to quote.

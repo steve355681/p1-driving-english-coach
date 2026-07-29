@@ -11,6 +11,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { useAsync } from "@/hooks/useAsync";
 import { loadReview } from "@/lib/data";
 import { ReviewUnavailableError, requestReview } from "@/lib/review/request";
+import { FEEDBACK_TYPE_LABELS } from "@/lib/progress/summarise";
 import { ROUTES } from "@/lib/constants";
 import { toError } from "@/lib/utils";
 
@@ -164,7 +165,7 @@ export function ReviewScreen({ sessionId }: { sessionId: string }) {
                     <Card key={item.id}>
                       <div className="mb-2 flex items-center gap-2">
                         <Badge tone={SEVERITY_TONE[item.severity]}>
-                          {item.type}
+                          {FEEDBACK_TYPE_LABELS[item.type]}
                         </Badge>
                       </div>
                       <p className="text-sm text-state-error line-through decoration-state-error/40">

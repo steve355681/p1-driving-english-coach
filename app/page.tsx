@@ -75,9 +75,11 @@ export default function LandingPage() {
             <li>· 不依賴語音喚醒字</li>
             <li>· 不做 CarPlay / Android Auto 深度整合</li>
             <li>· MVP 階段是網頁 App，不是原生 App</li>
+            <li>· 不做發音矯正 —— 練的是句型和用詞</li>
           </ul>
           <p className="mt-3 text-xs text-muted">
-            這些限制是刻意的：先把「出發前開始、行進間低互動、抵達後回顧」這條路徑做紮實。
+            這些限制是刻意的：先把「出發前開始、行進間低互動、抵達後回顧」這條路徑做紮實。發音是唯一因為場景而放棄的項目
+            —— 車上開擴音、有路噪，聽起來唸錯的字多半是收音問題，糾正它錯的機率比對的高。
           </p>
         </Card>
       </section>

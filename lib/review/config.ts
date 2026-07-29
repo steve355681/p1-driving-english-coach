@@ -1,4 +1,4 @@
-import type { EnglishLevel, TranscriptTurn } from "@/types";
+import type { EnglishLevel, FeedbackType, TranscriptTurn } from "@/types";
 
 /**
  * Turning a transcript into the after-drive review (FR-4).
@@ -32,19 +32,18 @@ export const MAX_ALTERNATIVES = 5;
 export const MAX_VOCABULARY = 5;
 
 /**
- * `pronunciation` is deliberately absent.
+ * What the model may pick from — the whole of `FeedbackType`.
  *
- * The review sees text, not audio. When a transcript garbles a word there is no
- * way to tell a mispronunciation from a transcription error, so any
- * pronunciation feedback generated from here would be a guess presented as a
- * finding. Better to say nothing than to have a learner drill a sound they said
- * correctly.
+ * This list once existed to hold `pronunciation` out. It is now the full set,
+ * because pronunciation left the product rather than just this schema: see the
+ * decision in `docs/07`. Kept as its own constant so the JSON schema below and
+ * the domain type cannot drift apart silently.
  */
 export const REVIEW_FEEDBACK_TYPES = [
   "grammar",
   "word_choice",
   "fluency",
-] as const;
+] as const satisfies readonly FeedbackType[];
 
 /**
  * The response shape, enforced by the API in strict mode.

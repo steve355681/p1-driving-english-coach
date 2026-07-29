@@ -112,11 +112,25 @@ on screen the learner will read it as a measurement. Phase 6 needs something to
 show a trend from; recurring error types and counts are real and already in the
 data.
 
-**Decided (Phase 5): no pronunciation feedback.** The review reads a text
-transcript. When speech recognition garbles a word there is no way to tell a
-mispronunciation from a transcription error, so `pronunciation` is not offered
-to the model as a correction type. It stays in `FeedbackType` because the column
-and the schema are shared with any future path that does see audio.
+**Decided (Phase 5, settled after real use): this product does not teach
+pronunciation.** It teaches sentence patterns and word choice.
+
+The review reads a text transcript, where a mispronunciation and a
+transcription error are indistinguishable. Real sessions then showed the live
+coach doing the same thing out loud — correcting words the learner had said
+correctly and the recognition had misheard. In a moving car, on speakerphone,
+with road noise, that is not a tuning problem: it is what the input is. Being
+told you mispronounced a word you said correctly is worse than no feedback,
+because it costs trust in everything else the coach says.
+
+So `pronunciation` is gone from `FeedbackType`, from the review's response
+schema, from the dashboard's labels, and from the `feedback_items` check
+constraint. The coach's prompt bans it outright and tells it to ask for a
+repeat rather than guess at a word it could not make out.
+
+Pronunciation work needs a quiet room and audio the model can trust. If it is
+ever built it belongs in a separate parked mode, not in the driving path — and
+it would be a different product decision, not an extension of this one.
 
 **Decided (Phase 5): the review is generated on first view, not at session
 end.** Generating at the end would hold the driver on a spinner at the moment
