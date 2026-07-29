@@ -20,6 +20,39 @@ export const REALTIME_MODEL = "gpt-realtime-2.1-mini";
 export const TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe";
 
 /**
+ * Pinned to English rather than left to auto-detection.
+ *
+ * The learner's first language is Chinese, and accented English on a car
+ * speakerphone is exactly the input a language detector gets wrong. Once it
+ * guesses wrong the transcript is not merely imperfect, it is a different
+ * language — which reads back as a pronunciation problem that was never there.
+ */
+export const TRANSCRIPTION_LANGUAGE = "en";
+
+/**
+ * When the server decides the learner has stopped speaking.
+ *
+ * Every default here is tuned for someone at a desk, and this is a moving car
+ * on speakerphone. All three failure modes produce audio that is clipped or
+ * noisy, and clipped audio is heard as a mispronounced word by both the
+ * transcriber and the coach.
+ */
+export const TURN_DETECTION = {
+  type: "server_vad",
+  // Road noise, indicators and the car stereo all sit above the default 0.5.
+  // Each false trigger cuts the learner off and starts a turn on nothing.
+  threshold: 0.6,
+  // Voice detection is retrospective: by the time it fires, the first syllable
+  // has already happened. 300ms is enough at a desk; in a car the onset is
+  // quieter relative to the noise floor, so more of the word gets lost.
+  prefix_padding_ms: 500,
+  // The default half-second ends the turn while a learner is still thinking.
+  // At A2 that happens constantly, and it truncates the sentence mid-clause —
+  // which the coach then corrects as if it were what they meant to say.
+  silence_duration_ms: 900,
+} as const;
+
+/**
  * Caps how much conversation history is re-sent — and re-billed — each turn.
  *
  * Measured on a real 15-minute session: audio *input* cost $0.57 against $0.17
@@ -178,6 +211,19 @@ export function coachInstructions(input: {
     "- The learner is driving. Never ask them to look at, read, or tap anything.",
     "- Correct only what is wrong with the pattern being drilled. Let unrelated",
     "  small mistakes go; they are dealt with in the review after the drive.",
+    "",
+    "- NEVER correct pronunciation, accent, or how a word sounded. Not once.",
+    "  The learner is in a moving car, on speakerphone, with road noise. When a",
+    "  word sounds wrong to you it is far more often the microphone, the noise,",
+    "  or a clipped recording than the learner. Correcting it is wrong more",
+    "  often than it is right, and being told you mispronounced a word you said",
+    "  correctly is worse than no feedback at all.",
+    "- If you genuinely cannot make out what they said, say \"Sorry, I didn't",
+    "  catch that — say it again?\" and wait. Never guess at the words and never",
+    "  correct a guess. A repeat costs three seconds; a wrong correction costs",
+    "  their confidence in everything else you say.",
+    "- If what you heard is not a real English word, assume you misheard rather",
+    "  than that they invented one.",
     "- If the learner goes quiet, give them the first two words of the sentence",
     "  rather than repeating the question.",
     "- Never discuss driving conditions or give directions.",

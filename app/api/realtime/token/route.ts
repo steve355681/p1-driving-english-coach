@@ -7,8 +7,10 @@ import {
 } from "@/lib/voice/policy";
 import {
   REALTIME_MODEL,
+  TRANSCRIPTION_LANGUAGE,
   TRANSCRIPTION_MODEL,
   TRUNCATION,
+  TURN_DETECTION,
   coachInstructions,
 } from "@/lib/voice/config";
 import type { VoiceTier } from "@/types";
@@ -166,22 +168,62 @@ export async function POST(request: Request) {
       }),
     });
 
+  const transcriptionConfig = {
+    model: TRANSCRIPTION_MODEL,
+    language: TRANSCRIPTION_LANGUAGE,
+  };
+
   const withTranscription = {
     ...baseSession,
-    audio: { input: { transcription: { model: TRANSCRIPTION_MODEL } } },
+    audio: { input: { transcription: transcriptionConfig } },
+  };
+
+  const withTurnDetection = {
+    ...baseSession,
+    audio: {
+      input: {
+        transcription: transcriptionConfig,
+        turn_detection: TURN_DETECTION,
+      },
+    },
   };
 
   /**
-   * Two optional pieces of session config, each of which the API could reject
-   * on its own — both have shapes that have changed before. They are dropped
-   * one at a time rather than together, so a rejected truncation setting does
-   * not silently cost the transcript as well. Losing either costs a feature;
-   * losing the session costs the drive.
+   * Optional session config, dropped one piece at a time rather than together.
+   * Each of these has a shape the API could reject on its own, and more than
+   * one of them has changed before; losing them as a block would mean a single
+   * renamed field silently costing three features.
+   *
+   * Ordered by what is cheapest to lose. Truncation costs money, turn detection
+   * costs transcript quality in a noisy car, transcription costs the review
+   * entirely. Losing any of them costs a feature; losing the session costs the
+   * drive.
    */
   const attempts = [
-    { session: { ...withTranscription, truncation: TRUNCATION }, transcription: true, truncation: true },
-    { session: withTranscription, transcription: true, truncation: false },
-    { session: baseSession, transcription: false, truncation: false },
+    {
+      session: { ...withTurnDetection, truncation: TRUNCATION },
+      transcription: true,
+      turnDetection: true,
+      truncation: true,
+    },
+    {
+      session: withTurnDetection,
+      transcription: true,
+      turnDetection: true,
+      truncation: false,
+    },
+    {
+      session: withTranscription,
+      transcription: true,
+      turnDetection: false,
+      truncation: false,
+    },
+    {
+      session: baseSession,
+      transcription: false,
+      turnDetection: false,
+      truncation: false,
+    },
   ];
 
   let openaiResponse = await mint(attempts[0].session);
@@ -238,6 +280,7 @@ export async function POST(request: Request) {
     model: REALTIME_MODEL,
     tier,
     transcription,
+    turnDetection: active.turnDetection,
     truncation: active.truncation,
   });
 }
