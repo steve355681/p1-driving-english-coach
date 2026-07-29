@@ -82,9 +82,11 @@ export async function POST(request: Request) {
   const tier: VoiceTier = entitlement?.tier ?? "trial";
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count, error: usageError } = await admin
+  // Rows rather than a count: the daily cap is measured in seconds, because
+  // that is what the bill is measured in.
+  const { data: usage, error: usageError } = await admin
     .from("voice_usage")
-    .select("id", { count: "exact", head: true })
+    .select("granted_seconds")
     .eq("user_id", user.id)
     .gte("created_at", since);
 
@@ -97,7 +99,11 @@ export async function POST(request: Request) {
   const decision = decideGrant({
     tier,
     requestedSeconds,
-    grantsToday: count ?? 0,
+    grantsToday: usage?.length ?? 0,
+    secondsToday: (usage ?? []).reduce(
+      (total, row) => total + row.granted_seconds,
+      0,
+    ),
     access: readVoiceAccess(process.env.VOICE_ACCESS),
     entitled: !!entitlement,
   });

@@ -17,15 +17,27 @@ export interface TierLimits {
   maxSessionSeconds: number;
   /** Grants allowed in a rolling 24 hours. */
   maxSessionsPerDay: number;
+  /**
+   * Total granted seconds allowed in a rolling 24 hours.
+   *
+   * The session count alone does not bound spending: eight grants of an hour
+   * each is eight hours of metered audio. Cost tracks time, so the cap that
+   * matters is time.
+   */
+  maxSecondsPerDay: number;
 }
 
 export const TIER_LIMITS: Record<VoiceTier, TierLimits> = {
   // Long enough for a visitor to have a real conversation and understand the
   // product; short enough that a hundred of them cost a few dollars.
-  trial: { maxSessionSeconds: 180, maxSessionsPerDay: 1 },
+  trial: { maxSessionSeconds: 180, maxSessionsPerDay: 1, maxSecondsPerDay: 180 },
   // Not "unlimited": a runaway loop or a bug should still hit a wall well
   // before it hits the OpenAI spending cap.
-  full: { maxSessionSeconds: 3600, maxSessionsPerDay: 8 },
+  // 90 minutes a day: a full hour of practice with room for the reconnects a
+  // dropped call costs, and roughly $2 a day at measured rates. The session
+  // count stays high because reconnecting spends a grant without spending much
+  // time; the seconds cap is what actually holds the line.
+  full: { maxSessionSeconds: 3600, maxSessionsPerDay: 8, maxSecondsPerDay: 5400 },
 };
 
 /**
@@ -49,6 +61,9 @@ export function readVoiceAccess(raw: string | undefined): VoiceAccess {
   return raw?.trim().toLowerCase() === "allowlist" ? "allowlist" : "trial";
 }
 
+/** Below this a grant is not worth issuing. */
+const MIN_USEFUL_SECONDS = 60;
+
 export type DenialReason = "daily_limit" | "invalid_request" | "not_allowed";
 
 export type GrantDecision =
@@ -61,6 +76,8 @@ export function decideGrant(input: {
   requestedSeconds: number;
   /** Grants already issued to this user in the last 24 hours. */
   grantsToday: number;
+  /** Seconds already granted to this user in the last 24 hours. */
+  secondsToday?: number;
   /** Deployment policy. Defaults to `trial` for callers that predate it. */
   access?: VoiceAccess;
   /** Whether the user has a `voice_entitlements` row of any tier. */
@@ -85,13 +102,22 @@ export function decideGrant(input: {
     return { allowed: false, reason: "daily_limit", limits };
   }
 
+  const remaining = limits.maxSecondsPerDay - (input.secondsToday ?? 0);
+  // A grant too short to say anything in is worse than a refusal: it costs a
+  // connection, a quota row and a microphone prompt, then ends mid-sentence.
+  if (remaining < MIN_USEFUL_SECONDS) {
+    return { allowed: false, reason: "daily_limit", limits };
+  }
+
   // Clamp rather than reject: asking for 60 minutes on the trial tier is not an
-  // attack, it is the launcher's default duration. Give what the tier allows.
+  // attack, it is the launcher's default duration. Give what the tier allows,
+  // and never more than the day has left.
   return {
     allowed: true,
     grantedSeconds: Math.min(
       Math.floor(input.requestedSeconds),
       limits.maxSessionSeconds,
+      remaining,
     ),
     limits,
   };
