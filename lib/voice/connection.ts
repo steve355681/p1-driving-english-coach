@@ -12,12 +12,20 @@ import type { VoiceTier } from "@/types";
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 
+/** How long `disconnected` may last before it counts as gone for good. */
+const DISCONNECT_GRACE_MS = 6000;
+
 export type VoiceEvent =
   | { type: "connected" }
   | { type: "coach-speaking" }
   | { type: "coach-done" }
   | { type: "transcript"; role: "user" | "coach"; text: string }
   | { type: "error"; error: Error }
+  /**
+   * The connection died on its own — a phone call, a tunnel, a network switch.
+   * Distinct from `closed`, which only ever means we closed it deliberately.
+   */
+  | { type: "dropped"; reason: string }
   | { type: "closed" };
 
 export interface VoiceGrant {
@@ -36,6 +44,14 @@ export interface VoiceConnection extends VoiceGrant {
   setMicrophoneEnabled: (enabled: boolean) => void;
   /** False when OpenAI refused the transcription config; see the API route. */
   transcription: boolean;
+  /**
+   * When the server last sent anything, as epoch ms.
+   *
+   * Polled rather than pushed: audio deltas arrive many times a second, so an
+   * event per delta would be thousands of React updates for one number nobody
+   * reads continuously.
+   */
+  lastActivityAt: () => number;
 }
 
 /** Raised when the gate refused; carries the message meant for the user. */
@@ -135,16 +151,47 @@ export async function connectVoice(input: {
   const peer = new RTCPeerConnection();
   let speaking = false;
   let closed = false;
+  let lastActivityAt = Date.now();
+  let dropTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const close = () => {
-    if (closed) return;
-    closed = true;
+  const teardown = () => {
+    if (dropTimer) clearTimeout(dropTimer);
+    dropTimer = null;
+    document.removeEventListener("visibilitychange", checkHealth);
     // Stopping the tracks is what actually releases the microphone. Closing
     // the peer connection alone leaves the recording indicator on.
     microphone.getTracks().forEach((track) => track.stop());
     peer.close();
+  };
+
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    teardown();
     input.onEvent({ type: "closed" });
   };
+
+  /**
+   * The connection died without us asking. Reported as its own event, because
+   * the screen has to say so and offer a way back — treating this like a
+   * deliberate close is what let a phone call leave the UI showing "請說話"
+   * over a connection that no longer existed.
+   */
+  const drop = (reason: string) => {
+    if (closed) return;
+    closed = true;
+    teardown();
+    input.onEvent({ type: "dropped", reason });
+  };
+
+  function checkHealth() {
+    if (closed || document.visibilityState !== "visible") return;
+    // Coming back from a phone call or the home screen, iOS does not always
+    // fire a state change for a connection that died while backgrounded.
+    if (["failed", "closed"].includes(peer.connectionState)) {
+      drop("連線在背景時中斷了。");
+    }
+  }
 
   try {
     peer.ontrack = (event) => {
@@ -158,7 +205,15 @@ export async function connectVoice(input: {
       });
     };
 
-    peer.addTrack(microphone.getTracks()[0], microphone);
+    const track = microphone.getAudioTracks()[0];
+    peer.addTrack(track, microphone);
+
+    // An incoming call takes the microphone away at the OS level. The track
+    // ends, and re-enabling it afterwards does nothing — which is why pausing
+    // and resuming could not bring a session back.
+    track.onended = () => drop("麥克風被中斷了，可能是有電話進來。");
+
+    document.addEventListener("visibilitychange", checkHealth);
 
     const channel = peer.createDataChannel("oai-events");
     channel.onopen = () => input.onEvent({ type: "connected" });
@@ -168,6 +223,8 @@ export async function connectVoice(input: {
         transcript?: string;
         error?: { message?: string };
       };
+      lastActivityAt = Date.now();
+
       try {
         event = JSON.parse(message.data as string);
       } catch {
@@ -204,8 +261,29 @@ export async function connectVoice(input: {
     };
 
     peer.onconnectionstatechange = () => {
-      if (["failed", "disconnected", "closed"].includes(peer.connectionState)) {
-        close();
+      const state = peer.connectionState;
+
+      if (state === "connected") {
+        // Recovered on its own, which `disconnected` often does.
+        if (dropTimer) clearTimeout(dropTimer);
+        dropTimer = null;
+        return;
+      }
+
+      if (state === "failed") {
+        drop("語音連線中斷了。");
+        return;
+      }
+
+      // `disconnected` is frequently transient — a few lost packets under a
+      // bridge. Declaring it dead immediately would end sessions that were
+      // about to recover, so it gets a grace period first.
+      if (state === "disconnected" && !dropTimer) {
+        dropTimer = setTimeout(() => {
+          if (peer.connectionState !== "connected") {
+            drop("語音連線中斷了。");
+          }
+        }, DISCONNECT_GRACE_MS);
       }
     };
 
@@ -240,6 +318,7 @@ export async function connectVoice(input: {
       grantedSeconds: grant.grantedSeconds,
       tier: grant.tier,
       transcription: grant.transcription !== false,
+      lastActivityAt: () => lastActivityAt,
     };
   } catch (cause) {
     // Never leave the microphone open on a failed connection.

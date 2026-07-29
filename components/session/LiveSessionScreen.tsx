@@ -25,6 +25,12 @@ import { cn, formatElapsed, toError } from "@/lib/utils";
 import type { Session, SessionStatus } from "@/types";
 
 /**
+ * How long the coach may be silent mid-turn before the screen says so. Long
+ * enough that an ordinary pause between clauses never trips it.
+ */
+const STALL_NOTICE_MS = 6000;
+
+/**
  * Driving mode.
  *
  * Hard rules for this screen:
@@ -62,6 +68,8 @@ export function LiveSessionScreen({
    */
   const deadlineRef = useRef<number | null>(null);
   const endingRef = useRef(false);
+  /** Set while the coach has gone quiet mid-turn, so the notice is shown once. */
+  const stalledRef = useRef(false);
 
   /**
    * Writes the whole transcript, not a delta. Sending the full array makes a
@@ -135,6 +143,35 @@ export function LiveSessionScreen({
     return () => clearInterval(timer);
   }, [status, flushTranscript]);
 
+  /**
+   * Says something when the coach goes quiet mid-turn.
+   *
+   * The model does occasionally stall for several seconds in the middle of a
+   * response. Nothing is broken and nothing needs restarting, but the screen
+   * used to show "教練說話中" over total silence, which is indistinguishable
+   * from a dead connection. Naming it is the fix; the silence itself belongs
+   * to the model.
+   */
+  useEffect(() => {
+    if (status !== "ai_speaking") {
+      stalledRef.current = false;
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const last = voiceRef.current?.lastActivityAt();
+      if (!last) return;
+
+      const idle = Date.now() - last;
+      if (idle >= STALL_NOTICE_MS && !stalledRef.current) {
+        stalledRef.current = true;
+        setNotice("教練停頓了一下，直接說話就可以接下去。");
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [status]);
+
   // Ends the session when the granted time runs out. The driver cannot be
   // expected to watch a clock and tap a button, and without this the
   // credential simply expires mid-sentence and the session is left open in the
@@ -160,9 +197,15 @@ export function LiveSessionScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
+  /**
+   * Opens the voice connection. Also the reconnect path, which is why it does
+   * not start from scratch: a session interrupted by a phone call keeps the
+   * transcript it already has and the deadline it was already running to.
+   */
   async function connect() {
     setError(null);
     setNotice(null);
+    stalledRef.current = false;
     send({ type: "CONNECT" });
 
     if (placeholder) {
@@ -178,7 +221,9 @@ export function LiveSessionScreen({
       const audioElement = audioRef.current;
       if (!audioElement) throw new Error("音訊元件尚未就緒。");
 
-      const log = createTranscriptLog();
+      // Reused on reconnect. A fresh log would drop every turn that had not
+      // been flushed when the connection died.
+      const log = transcriptRef.current ?? createTranscriptLog();
       transcriptRef.current = log;
 
       voiceRef.current = await connectVoice({
@@ -204,6 +249,14 @@ export function LiveSessionScreen({
             case "error":
               setError(event.error.message);
               break;
+            case "dropped":
+              // The connection is already gone; `close()` on a dead peer is a
+              // no-op, but clearing the ref stops pause/resume from acting on
+              // tracks the OS has already stopped.
+              voiceRef.current = null;
+              setError(`${event.reason}點「重新連線」可以接著練，逐字稿會保留。`);
+              send({ type: "FAIL" });
+              break;
             case "closed":
               break;
           }
@@ -212,8 +265,14 @@ export function LiveSessionScreen({
 
       // A trial grant is shorter than the chosen duration; say so once, before
       // the drive, rather than cutting out unexplained later.
+      // The deadline never moves outward on reconnect. A drive does not get
+      // longer because the connection dropped, and the new credential expires
+      // on its own clock regardless.
       const granted = voiceRef.current.grantedSeconds;
-      deadlineRef.current = Date.now() + granted * 1000;
+      deadlineRef.current = Math.min(
+        deadlineRef.current ?? Number.POSITIVE_INFINITY,
+        Date.now() + granted * 1000,
+      );
       const notes: string[] = [];
       if (granted < session.durationMinutes * 60) {
         notes.push(`本次可練習 ${Math.round(granted / 60)} 分鐘。`);
@@ -298,7 +357,7 @@ export function LiveSessionScreen({
       <div className="flex flex-col gap-3">
         {idle || failed ? (
           <Button size="driving" fullWidth onClick={connect}>
-            {failed ? "再試一次" : "開始對話"}
+            {failed ? "重新連線" : "開始對話"}
           </Button>
         ) : status === "paused" ? (
           <Button
