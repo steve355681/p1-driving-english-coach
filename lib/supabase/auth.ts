@@ -6,19 +6,33 @@ function redirectTo() {
   return `${window.location.origin}/settings`;
 }
 
+/**
+ * Who the caller is, according to the auth server.
+ *
+ * `getUser()` rather than `getSession()`, and the difference is not academic.
+ * `getSession()` reads the access token held in this browser, and that token
+ * was minted before Google was linked — so it still says the user has no
+ * email. Reading it made a completed sign-in render as "目前為匿名試用模式",
+ * which is indistinguishable from the sign-in having failed.
+ *
+ * The cost is a network round trip on each read. Worth it: this is the one
+ * value on the settings screen the learner uses to decide whether to try
+ * signing in again.
+ */
 export async function getAuthState(): Promise<AuthState> {
   const supabase = requireSupabase();
-  const { data } = await supabase.auth.getSession();
-  const user = data.session?.user;
+  const { data, error } = await supabase.auth.getUser();
+  const user = error ? null : data.user;
 
   if (!user) return { userId: null, email: null, isAnonymous: true };
 
   return {
     userId: user.id,
     email: user.email ?? null,
-    // Supabase marks users created by signInAnonymously; falling back to "no
-    // email" covers a session created before the flag existed.
-    isAnonymous: user.is_anonymous ?? !user.email,
+    // Derived from the email alone. `is_anonymous` is not cleared reliably once
+    // an identity is linked, and a stale `true` here would send the caller back
+    // into linkIdentity against a user that has already been linked.
+    isAnonymous: !user.email,
   };
 }
 
