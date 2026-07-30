@@ -53,8 +53,13 @@ Schema for P1 Driving English Coach. Mirrors `docs/04-technical-architecture.md`
      it already has, instead of starting a second one and stranding the practice
      recorded here.
 
-5. **Optional: codes in the sign-in emails.** Only needed if the email fallback
-   in the account panel is going to be used.
+5. **Optional: codes in the sign-in emails.** The email fallback works without
+   this — it sends a link. This replaces the link with a six-digit code, which
+   is better on a phone because the link opens in the mail app's own browser.
+
+   Requires `NEXT_PUBLIC_EMAIL_CODE=1` as well as the template edits below. The
+   app keeps the code field hidden until that variable is set, so the field can
+   never appear before the email can fill it.
 
    Editing templates requires custom SMTP or a paid plan — on the free plan with
    Supabase's built-in email service the templates are read-only, so the code

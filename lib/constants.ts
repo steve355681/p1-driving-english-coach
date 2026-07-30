@@ -48,6 +48,20 @@ export const DEFAULT_LEVEL: EnglishLevel = "B1";
  * from a summarising tool are usually well under this, so the common case
  * costs nothing extra.
  */
+/**
+ * Whether the sign-in email carries a six-digit code as well as a link.
+ *
+ * Off unless `NEXT_PUBLIC_EMAIL_CODE=1`, because it depends on something no
+ * code in this repo controls: editing Supabase's email templates requires
+ * custom SMTP or a paid plan. Without that the code never arrives, and a field
+ * the email cannot fill is worse than no field — it reads as a broken product
+ * rather than a missing prerequisite.
+ *
+ * The link works either way. Turn this on once `{{ .Token }}` is actually in
+ * both templates; see supabase/README.md.
+ */
+export const EMAIL_CODE_ENABLED = process.env.NEXT_PUBLIC_EMAIL_CODE === "1";
+
 export const TOPIC_CONDENSE_THRESHOLD = 1500;
 export const TOPIC_NOTES_MAX = 20000;
 

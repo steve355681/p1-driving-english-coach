@@ -60,12 +60,20 @@ turns something on:
 | `OPENAI_API_KEY` | voice, review generation, note condensing | voice returns 503; reviews cannot be generated |
 | `SUPABASE_SERVICE_ROLE_KEY` | the voice and review API routes | both routes fail |
 | `VOICE_ACCESS` | restricting who may spend voice | defaults to `trial` — see below |
+| `NEXT_PUBLIC_EMAIL_CODE` | offering a six-digit code in the email fallback | the fallback uses the emailed link only |
 
 `OPENAI_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are server-side only. Neither
 may ever be prefixed `NEXT_PUBLIC_`; that prefix ships the value to the browser.
 
-Supabase needs anonymous sign-ins enabled and the migrations in
-`supabase/migrations/` applied in filename order. See `supabase/README.md`.
+Supabase needs anonymous sign-ins enabled, Google OAuth configured, and the
+migrations in `supabase/migrations/` applied in filename order. See
+`supabase/README.md`.
+
+Sign-in is Google, with an emailed fallback. The fallback sends a link by
+default; set `NEXT_PUBLIC_EMAIL_CODE=1` only after `{{ .Token }}` is actually in
+both Supabase email templates, which requires custom SMTP or a paid plan.
+Without that the code never arrives, and a field the email cannot fill looks
+like a broken product rather than an unconfigured one.
 
 ## Who can spend voice
 

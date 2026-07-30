@@ -19,13 +19,14 @@ import {
   type SignInOutcome,
 } from "@/lib/supabase/auth";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { EMAIL_CODE_ENABLED } from "@/lib/constants";
 import { toError } from "@/lib/utils";
 
 const SENT_MESSAGE: Record<SignInOutcome["kind"], string> = {
-  linked: "驗證信已寄出。完成後，這個裝置上的紀錄會保留。",
-  "signed-in": "驗證信已寄出。",
+  linked: "登入信已寄出。完成後，這個裝置上的紀錄會保留。",
+  "signed-in": "登入信已寄出。",
   "already-registered":
-    "這個 email 已經有帳號了，驗證信已寄出。注意：這個裝置上以匿名身分留下的紀錄不會一起帶過去。",
+    "這個 email 已經有帳號了，登入信已寄出。注意：這個裝置上以匿名身分留下的紀錄不會一起帶過去。",
 };
 
 export function AccountPanel() {
@@ -200,31 +201,36 @@ export function AccountPanel() {
           登出
         </Button>
       ) : pending ? (
-        /* The code, not the link. On a phone the link opens in the mail app's
-           own browser, which signs in a browser the learner is not looking at
-           — and this panel then asks again for an address already verified. */
-        <form onSubmit={verify} className="mt-4 flex flex-col gap-2">
-          <input
-            type="text"
-            required
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="6 位數驗證碼"
-            inputMode="numeric"
-            // Lets iOS and Android offer the code straight from the email
-            // rather than making someone memorise it between two apps.
-            autoComplete="one-time-code"
-            maxLength={8}
-            className="min-h-12 rounded-xl border border-line bg-surface-2 px-3 text-center text-lg tracking-[0.3em] tabular-nums text-fg placeholder:text-sm placeholder:tracking-normal placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-          />
-          <Button type="submit" fullWidth disabled={verifying}>
-            {verifying ? "驗證中…" : "完成登入"}
-          </Button>
-          {/* For a link that did open in this browser, and for an email with
-              no code in it because the Supabase template has not been edited
-              yet. Re-reads the auth state rather than asking for anything. */}
-          <button
-            type="button"
+        <div className="mt-4 flex flex-col gap-2">
+          {/* The code, where it exists. On a phone the link opens in the mail
+              app's own browser, which signs in a browser the learner is not
+              looking at — so a code that can be typed here is strictly better.
+              It needs `{{ .Token }}` in the Supabase templates, which needs
+              custom SMTP, so it is behind a flag rather than assumed. */}
+          {EMAIL_CODE_ENABLED ? (
+            <form onSubmit={verify} className="flex flex-col gap-2">
+              <input
+                type="text"
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="6 位數驗證碼"
+                inputMode="numeric"
+                // Lets iOS and Android offer the code straight from the email
+                // rather than making someone memorise it between two apps.
+                autoComplete="one-time-code"
+                maxLength={8}
+                className="min-h-12 rounded-xl border border-line bg-surface-2 px-3 text-center text-lg tracking-[0.3em] tabular-nums text-fg placeholder:text-sm placeholder:tracking-normal placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              />
+              <Button type="submit" fullWidth disabled={verifying}>
+                {verifying ? "驗證中…" : "完成登入"}
+              </Button>
+            </form>
+          ) : null}
+
+          <Button
+            variant="secondary"
+            fullWidth
             onClick={() => {
               setPending(null);
               setSent(null);
@@ -232,10 +238,10 @@ export function AccountPanel() {
               setError(null);
               setReloadKey((key) => key + 1);
             }}
-            className="min-h-11 text-xs text-muted underline underline-offset-2"
           >
-            我已經點了信裡的連結，重新檢查
-          </button>
+            我已經點了信裡的連結
+          </Button>
+
           <button
             type="button"
             onClick={() => {
@@ -248,7 +254,7 @@ export function AccountPanel() {
           >
             改用其他 email
           </button>
-        </form>
+        </div>
       ) : (
         <div className="mt-4 flex flex-col gap-2">
           <Button fullWidth disabled={sending} onClick={() => google()}>
@@ -283,7 +289,7 @@ export function AccountPanel() {
                 fullWidth
                 disabled={sending}
               >
-                {sending ? "寄送中…" : "寄送驗證碼"}
+                {sending ? "寄送中…" : EMAIL_CODE_ENABLED ? "寄送驗證碼" : "寄送登入連結"}
               </Button>
             </form>
           ) : (
@@ -292,7 +298,7 @@ export function AccountPanel() {
               onClick={() => setShowEmail(true)}
               className="min-h-11 text-xs text-muted underline underline-offset-2"
             >
-              改用 email 收驗證碼
+              {EMAIL_CODE_ENABLED ? "改用 email 收驗證碼" : "改用 email 收登入連結"}
             </button>
           )}
         </div>
@@ -302,8 +308,9 @@ export function AccountPanel() {
         <p className="mt-3 rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-xs leading-relaxed text-brand">
           {sent}
           <span className="mt-1 block text-muted">
-            在上面輸入信中的驗證碼就完成了。信裡的連結也可以用，但在手機上通常會在信箱
-            App 自己的瀏覽器開啟，那邊登入了、這邊還是匿名。
+            {EMAIL_CODE_ENABLED
+              ? "在上面輸入信中的驗證碼就完成了。"
+              : "在手機上請長按信中的連結、複製網址，再貼回這個瀏覽器打開 —— 直接點通常會在信箱 App 自己的瀏覽器開啟，那邊登入了、這邊還是匿名。"}
           </span>
         </p>
       ) : null}
