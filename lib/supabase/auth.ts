@@ -6,6 +6,81 @@ function redirectTo() {
   return `${window.location.origin}/settings`;
 }
 
+export interface AuthRedirectError {
+  code: string | null;
+  message: string;
+}
+
+/**
+ * Captured at import time, on purpose.
+ *
+ * A failed OAuth round trip comes back as `error` parameters on this URL, and
+ * the Supabase client strips the fragment while initialising. Reading it from
+ * an effect is a race against that, and losing the race means the failure is
+ * silent — which is exactly what happened: Google granted access, Supabase
+ * refused the identity, and the screen simply carried on saying 匿名試用模式
+ * with nothing to tell the learner why.
+ */
+const REDIRECT_ERROR: AuthRedirectError | null =
+  typeof window === "undefined" ? null : parseRedirectError();
+
+function parseRedirectError(): AuthRedirectError | null {
+  // Which half of the URL carries it depends on the flow, so check both.
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const source = hash.has("error") ? hash : query.has("error") ? query : null;
+  if (!source) return null;
+
+  return {
+    code: source.get("error_code"),
+    message: source.get("error_description") ?? source.get("error") ?? "",
+  };
+}
+
+/**
+ * Known reasons a sign-in comes back refused.
+ *
+ * The raw description is always appended rather than swallowed. These codes
+ * change, and a message that only says "登入失敗" would leave the next person
+ * exactly where this one was.
+ */
+const REDIRECT_ERROR_MESSAGES: Record<string, string> = {
+  identity_already_exists:
+    "這個 Google 帳號已經綁在另一個帳號上，所以無法接到這個瀏覽器的紀錄。改用下面的「仍要直接登入」，就會登入原本那個帳號。",
+  email_exists:
+    "這個 email 已經有另一個帳號了，所以無法接到這個瀏覽器的紀錄。改用下面的「仍要直接登入」，就會登入原本那個帳號。",
+  manual_linking_disabled:
+    "專案沒有開啟手動綁定，所以無法保留這個瀏覽器的紀錄。可以改用下面的「仍要直接登入」。",
+  bad_oauth_state:
+    "登入流程被中斷了 —— 常見於在其他 App 內建的瀏覽器裡操作。請直接用 Chrome 或 Safari 開這個網站再試一次。",
+  flow_state_not_found:
+    "登入流程被中斷了 —— 常見於在其他 App 內建的瀏覽器裡操作。請直接用 Chrome 或 Safari 開這個網站再試一次。",
+  access_denied: "你取消了 Google 授權。",
+};
+
+export function explainRedirectError(failure: AuthRedirectError) {
+  const known = failure.code
+    ? REDIRECT_ERROR_MESSAGES[failure.code]
+    : undefined;
+
+  if (known) return known;
+  return `登入沒有完成：${failure.message || failure.code || "原因未知"}`;
+}
+
+/**
+ * Returns the error this page was redirected back with, once, and clears it
+ * from the address bar so a reload does not resurrect it.
+ */
+let redirectErrorTaken = false;
+
+export function takeRedirectError(): AuthRedirectError | null {
+  if (redirectErrorTaken || !REDIRECT_ERROR) return null;
+  redirectErrorTaken = true;
+
+  window.history.replaceState({}, "", window.location.pathname);
+  return REDIRECT_ERROR;
+}
+
 /**
  * Who the caller is, according to the auth server.
  *

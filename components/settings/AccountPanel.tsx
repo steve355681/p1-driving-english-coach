@@ -8,11 +8,13 @@ import { useAsync } from "@/hooks/useAsync";
 import { getVoiceTier } from "@/lib/db/entitlements";
 import {
   GoogleLinkBlockedError,
+  explainRedirectError,
   getAuthState,
   requestMagicLink,
   signInWithGoogle,
   signInWithGoogleFresh,
   signOut,
+  takeRedirectError,
   verifyCode,
   type SignInOutcome,
 } from "@/lib/supabase/auth";
@@ -43,6 +45,20 @@ export function AccountPanel() {
   const [showEmail, setShowEmail] = useState(false);
   /** Set when linking Google to this browser's anonymous user was refused. */
   const [linkBlocked, setLinkBlocked] = useState(false);
+
+  /**
+   * A refused OAuth round trip comes back as error parameters on this URL, and
+   * the failure is invisible without showing them. `linkBlocked` goes up too,
+   * so the way forward — signing in without keeping this browser's anonymous
+   * history — is on screen next to the explanation.
+   */
+  useEffect(() => {
+    const failure = takeRedirectError();
+    if (!failure) return;
+
+    setLinkBlocked(true);
+    setError(explainRedirectError(failure));
+  }, []);
 
   /**
    * Returning from Google lands back on this page with the session in the URL
