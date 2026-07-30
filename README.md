@@ -18,7 +18,8 @@ Build a **publicly deployable**, **portfolio-ready** product that helps users pr
 ## Stack
 - Next.js 15 (App Router), React 19, TypeScript
 - Tailwind CSS 4 — tokens in `app/globals.css`, no config file
-- Supabase — Postgres, row level security, anonymous and magic-link auth
+- Supabase — Postgres, row level security, anonymous sign-in, Google OAuth,
+  email one-time codes as a fallback
 - OpenAI Realtime API over WebRTC for the conversation; `gpt-4o-mini` for
   review generation and note condensing
 - Vercel
@@ -155,7 +156,7 @@ session can be started and finished on a phone, the transcript is saved, a
 review is generated from it, the dashboard lists prior sessions, and the app is
 deployed publicly.
 
-What works end to end: anonymous or magic-link sign-in, saved topics from
+What works end to end: anonymous sign-in upgraded in place to Google, saved topics from
 pasted notes, a spoken session over WebRTC with a live transcript, a generated
 review, weekly aggregation, spaced review of collected phrases, and deletion of
 practice history.

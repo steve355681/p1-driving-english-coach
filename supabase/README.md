@@ -25,49 +25,64 @@ Schema for P1 Driving English Coach. Mirrors `docs/04-technical-architecture.md`
    ```
 3. **Enable anonymous sign-ins**: Authentication → Sign In / Providers →
    Anonymous. Without this the app cannot create sessions — see below.
-4. **Put the code in the sign-in emails.** The default templates contain only
-   a link, so the app's code field has nothing to enter until this is done.
+4. **Enable Google sign-in** — the recommended way in, and the reason is
+   mechanical rather than aesthetic. Anything emailed has to be carried from a
+   mail app back to a browser, and a tapped link opens in the *mail app's* own
+   browser, not the one on screen. That browser gets the session; the one the
+   learner is looking at stays anonymous, so the app asks again for an address
+   already verified. OAuth starts and finishes in the browser already in use.
 
-   Dashboard → **Authentication** → **Emails** (older projects: *Email
-   Templates*). Pick a template, and add a line above the existing link:
+   In Google Cloud Console:
+   - APIs & Services → **OAuth consent screen**. External, fill in the app name
+     and a support email. Add your own address under **Test users** — the app
+     can stay unpublished while it has a handful of users.
+   - APIs & Services → **Credentials** → Create credentials → **OAuth client
+     ID** → Web application.
+   - Authorised redirect URI, exactly:
+     `https://<project-ref>.supabase.co/auth/v1/callback`
+   - Copy the client ID and client secret.
+
+   In Supabase:
+   - Authentication → **Sign In / Providers** → **Google** → enable, paste both
+     values, save.
+   - Authentication → **URL Configuration** → add the deployed origin and
+     `http://localhost:3000` to **Redirect URLs**. Without this the callback is
+     rejected and the learner lands back signed out with no explanation.
+   - Authentication → **Sign In / Providers** → enable **Allow manual linking**.
+     This is what lets an anonymous browser attach a Google identity to the user
+     it already has, instead of starting a second one and stranding the practice
+     recorded here.
+
+5. **Optional: codes in the sign-in emails.** Only needed if the email fallback
+   in the account panel is going to be used.
+
+   Editing templates requires custom SMTP or a paid plan — on the free plan with
+   Supabase's built-in email service the templates are read-only, so the code
+   field has nothing to enter and only the link works. Attach any SMTP provider
+   that allows verifying a single sender address (no domain required), then
+   Authentication → **Emails**, and add above the existing link in both **Magic
+   Link** and **Change Email Address**:
 
    ```html
    <p>驗證碼：{{ .Token }}</p>
    ```
 
-   Do this for **both**:
-   - **Magic Link** — used when signing in to an existing account
-   - **Change Email Address** (may be shown as *Confirm email change*) — used
-     when attaching an address to an anonymous browser, which is the usual
-     first sign-in here
+   Save each template separately. Effective on the next email; nothing needs
+   redeploying.
 
-   Save each template separately. The change takes effect on the next email;
-   nothing needs redeploying. If the email still arrives with only a link, the
-   template that was actually used is the other one — the subject line says
-   which.
-
-   The app asks for that code rather than relying on the link, because on a
-   phone the link opens inside the mail app's own browser. That browser gets
-   the session and the one the learner is looking at stays anonymous, so the
-   app keeps asking for an address that has already been verified. Both
-   templates are needed: linking an address to an anonymous user goes through
-   the change-email flow, a plain sign-in through the magic-link one.
-
-   Without `{{ .Token }}` the emails still arrive and the links still work —
-   the code field simply has nothing to enter.
-5. Copy the project URL and anon key into `.env.local`:
+6. Copy the project URL and anon key into `.env.local`:
    ```
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    ```
-6. For voice and review generation, add the service role key (Project Settings
+7. For voice and review generation, add the service role key (Project Settings
    → API) and an OpenAI key. Both are server-side only and must never be
    prefixed `NEXT_PUBLIC_`:
    ```
    SUPABASE_SERVICE_ROLE_KEY=...
    OPENAI_API_KEY=...
    ```
-7. To give yourself the full voice tier, insert an entitlement row. Users
+8. To give yourself the full voice tier, insert an entitlement row. Users
    cannot write this table, which is the point:
    ```sql
    insert into public.voice_entitlements (user_id, tier, note)

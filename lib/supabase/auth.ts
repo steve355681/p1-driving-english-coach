@@ -91,6 +91,73 @@ async function signInWithEmail(email: string) {
 }
 
 /**
+ * Google sign-in, and the reason it is the recommended path.
+ *
+ * Email verification is fundamentally awkward on a phone: whatever arrives has
+ * to be carried from a mail app back to a browser, and a tapped link opens in
+ * the mail app's own browser rather than the one on screen. OAuth starts in the
+ * browser the learner is already using and comes back to it, so the session
+ * lands where they are looking. No email, no code, no rate limit, no spam
+ * folder.
+ *
+ * For an anonymous browser this *links* Google to the existing user, so the
+ * practice already recorded here survives. If that fails the caller is told
+ * rather than quietly signed in as somebody else — a silent fallback would
+ * abandon real history.
+ */
+export class GoogleLinkBlockedError extends Error {
+  constructor(readonly detail: string) {
+    super(
+      "無法把 Google 帳號綁到這個瀏覽器的紀錄上。" +
+        "可能這個 Google 帳號已經有另一組紀錄，或專案沒有開啟手動綁定。",
+    );
+    this.name = "GoogleLinkBlockedError";
+  }
+}
+
+export async function signInWithGoogle(): Promise<void> {
+  const supabase = requireSupabase();
+
+  // There has to be a user before there is anything to link to.
+  await ensureAuthUserId();
+  const state = await getAuthState();
+
+  if (state.isAnonymous) {
+    const { error } = await supabase.auth.linkIdentity({
+      provider: "google",
+      options: { redirectTo: redirectTo() },
+    });
+    // On success the browser is already navigating to Google.
+    if (!error) return;
+
+    throw new GoogleLinkBlockedError(error.message);
+  }
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: redirectTo() },
+  });
+  if (error) throw error;
+}
+
+/**
+ * Google sign-in that does not try to keep this browser's anonymous history.
+ *
+ * Only offered after linking has already failed, and only behind a warning:
+ * the rows recorded here belong to an auth user this sign-in walks away from,
+ * and row level security will hide them afterwards.
+ */
+export async function signInWithGoogleFresh(): Promise<void> {
+  const supabase = requireSupabase();
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: redirectTo() },
+  });
+  if (error) throw error;
+}
+
+/**
  * Completes sign-in with the code from the email, in this browser.
  *
  * The link in the same email also works, but on a phone it usually does not:
