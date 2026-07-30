@@ -46,9 +46,11 @@ function parseRedirectError(): AuthRedirectError | null {
  */
 const REDIRECT_ERROR_MESSAGES: Record<string, string> = {
   identity_already_exists:
-    "這個 Google 帳號已經綁在另一個帳號上，所以無法接到這個瀏覽器的紀錄。改用下面的「仍要直接登入」，就會登入原本那個帳號。",
+    "這個 Google 帳號已經有自己的紀錄了，沒辦法把這個瀏覽器上的練習併進去。" +
+    "下面的按鈕會直接登入那個帳號 —— 那邊的紀錄都在，只有這個瀏覽器上的不會過去。",
   email_exists:
-    "這個 email 已經有另一個帳號了，所以無法接到這個瀏覽器的紀錄。改用下面的「仍要直接登入」，就會登入原本那個帳號。",
+    "這個 email 已經有自己的紀錄了，沒辦法把這個瀏覽器上的練習併進去。" +
+    "下面的按鈕會直接登入那個帳號 —— 那邊的紀錄都在，只有這個瀏覽器上的不會過去。",
   manual_linking_disabled:
     "專案沒有開啟手動綁定，所以無法保留這個瀏覽器的紀錄。可以改用下面的「仍要直接登入」。",
   bad_oauth_state:
@@ -204,6 +206,23 @@ export class GoogleLinkBlockedError extends Error {
   }
 }
 
+/**
+ * Whether this anonymous browser has anything worth carrying into an account.
+ *
+ * Row level security scopes both counts to the current user, so there is no
+ * owner filter — and no way to see anybody else's totals.
+ */
+async function anonymousHasHistory(): Promise<boolean> {
+  const supabase = requireSupabase();
+
+  const [sessions, topics] = await Promise.all([
+    supabase.from("sessions").select("id", { count: "exact", head: true }),
+    supabase.from("topics").select("id", { count: "exact", head: true }),
+  ]);
+
+  return (sessions.count ?? 0) > 0 || (topics.count ?? 0) > 0;
+}
+
 export async function signInWithGoogle(): Promise<void> {
   const supabase = requireSupabase();
 
@@ -211,7 +230,14 @@ export async function signInWithGoogle(): Promise<void> {
   await ensureAuthUserId();
   const state = await getAuthState();
 
-  if (state.isAnonymous) {
+  /**
+   * Linking exists for one reason: to keep practice recorded before signing in.
+   * With nothing recorded it is pure cost — a round trip through Google that can
+   * come back refused because the address already has an account, which is not
+   * something the learner can act on and not a choice worth showing them. So an
+   * empty browser signs in the ordinary way and the question never comes up.
+   */
+  if (state.isAnonymous && (await anonymousHasHistory())) {
     const { error } = await supabase.auth.linkIdentity({
       provider: "google",
       options: { redirectTo: redirectTo() },
