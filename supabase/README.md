@@ -25,9 +25,26 @@ Schema for P1 Driving English Coach. Mirrors `docs/04-technical-architecture.md`
    ```
 3. **Enable anonymous sign-ins**: Authentication → Sign In / Providers →
    Anonymous. Without this the app cannot create sessions — see below.
-4. **Put the code in the sign-in emails**: Authentication → Emails → Templates.
-   Add `{{ .Token }}` to both **Magic Link** and **Change Email Address** — for
-   example `驗證碼：{{ .Token }}` above the existing link.
+4. **Put the code in the sign-in emails.** The default templates contain only
+   a link, so the app's code field has nothing to enter until this is done.
+
+   Dashboard → **Authentication** → **Emails** (older projects: *Email
+   Templates*). Pick a template, and add a line above the existing link:
+
+   ```html
+   <p>驗證碼：{{ .Token }}</p>
+   ```
+
+   Do this for **both**:
+   - **Magic Link** — used when signing in to an existing account
+   - **Change Email Address** (may be shown as *Confirm email change*) — used
+     when attaching an address to an anonymous browser, which is the usual
+     first sign-in here
+
+   Save each template separately. The change takes effect on the next email;
+   nothing needs redeploying. If the email still arrives with only a link, the
+   template that was actually used is the other one — the subject line says
+   which.
 
    The app asks for that code rather than relying on the link, because on a
    phone the link opens inside the mail app's own browser. That browser gets

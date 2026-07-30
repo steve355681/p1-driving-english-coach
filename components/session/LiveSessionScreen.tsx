@@ -22,13 +22,16 @@ import {
   SESSION_STATUS_LABELS,
 } from "@/lib/constants";
 import { cn, formatElapsed, toError } from "@/lib/utils";
-import type { Session, SessionStatus } from "@/types";
+import type { Session, SessionStatus, TranscriptTurn } from "@/types";
 
 /**
  * How long the coach may be silent mid-turn before the screen says so. Long
  * enough that an ordinary pause between clauses never trips it.
  */
 const STALL_NOTICE_MS = 6000;
+
+/** How many turns the peek panel shows. Deliberately not scrollable. */
+const RECENT_TURNS = 2;
 
 /**
  * Driving mode.
@@ -55,6 +58,16 @@ export function LiveSessionScreen({
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /**
+   * The last couple of turns, for when the conversation starts going in
+   * circles and the learner needs to see what was actually said.
+   *
+   * Collapsed by default and it stays that way unless asked for: this screen's
+   * whole point is that it does not reward looking at it. Two turns is the cap
+   * — enough to catch a misheard word, not enough to read while moving.
+   */
+  const [recent, setRecent] = useState<TranscriptTurn[]>([]);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const voiceRef = useRef<VoiceConnection | null>(null);
@@ -244,6 +257,7 @@ export function LiveSessionScreen({
               break;
             case "transcript":
               log.add({ role: event.role, text: event.text });
+              setRecent(log.all().slice(-RECENT_TURNS));
               if (log.due()) void flushTranscript();
               break;
             case "error":
@@ -353,6 +367,37 @@ export function LiveSessionScreen({
           <p className="px-6 text-center text-sm text-state-error">{error}</p>
         ) : null}
       </div>
+
+      {/* Above the controls, so reaching for it can never be confused with
+          reaching for 暫停 or 結束. */}
+      {!idle && recent.length > 0 ? (
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => setShowTranscript((open) => !open)}
+            aria-expanded={showTranscript}
+            className="min-h-11 w-full text-center text-sm text-muted underline underline-offset-4"
+          >
+            {showTranscript ? "收起逐字稿" : "看剛剛說了什麼"}
+          </button>
+
+          {showTranscript ? (
+            <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-line bg-surface px-4 py-3">
+              {recent.map((turn, index) => (
+                <p
+                  key={`${turn.at}-${index}`}
+                  className="text-sm leading-relaxed"
+                >
+                  <span className="mr-2 text-xs text-muted">
+                    {turn.role === "coach" ? "教練" : "你"}
+                  </span>
+                  <span className="text-fg">{turn.text}</span>
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3">
         {idle || failed ? (

@@ -163,6 +163,22 @@ export function AccountPanel() {
           <Button type="submit" fullWidth disabled={verifying}>
             {verifying ? "驗證中…" : "完成登入"}
           </Button>
+          {/* For a link that did open in this browser, and for an email with
+              no code in it because the Supabase template has not been edited
+              yet. Re-reads the auth state rather than asking for anything. */}
+          <button
+            type="button"
+            onClick={() => {
+              setPending(null);
+              setSent(null);
+              setCode("");
+              setError(null);
+              setReloadKey((key) => key + 1);
+            }}
+            className="min-h-11 text-xs text-muted underline underline-offset-2"
+          >
+            我已經點了信裡的連結，重新檢查
+          </button>
           <button
             type="button"
             onClick={() => {

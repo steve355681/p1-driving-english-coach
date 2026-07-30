@@ -132,6 +132,25 @@ Pronunciation work needs a quiet room and audio the model can trust. If it is
 ever built it belongs in a separate parked mode, not in the driving path — and
 it would be a different product decision, not an extension of this one.
 
+**Refined (post-launch, at the owner's request): the coach may work on a word
+that was genuinely unintelligible.** The line moved from "never" to "only when
+it blocked understanding" — the coach could not make the word out, asked for a
+repeat, and still could not. That is a fact about communication rather than a
+judgement about accent, and it is the one case the original ban was too broad
+for: a word nobody can understand is worth fixing whatever the microphone is
+doing.
+
+Everything else holds. An accent is not an error, a word that merely sounds off
+is not evidence, and the written review still offers no pronunciation category
+at all — text cannot tell a mispronunciation from a transcription error, and
+that has not changed.
+
+Corrections of every kind are now delivered as four separated steps, slowly, at
+every level: what you said, which part is wrong, the correct version with the
+changed part stressed, then repeat it back. The learner cannot see the words, so
+hearing the contrast is the only channel they have, and at normal speed a
+one-word change is inaudible.
+
 **Decided (Phase 5): the review is generated on first view, not at session
 end.** Generating at the end would hold the driver on a spinner at the moment
 they most want to put the phone down, and would pay for reviews nobody opens.
