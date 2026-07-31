@@ -20,8 +20,9 @@ Build a **publicly deployable**, **portfolio-ready** product that helps users pr
 - Tailwind CSS 4 — tokens in `app/globals.css`, no config file
 - Supabase — Postgres, row level security, anonymous sign-in, Google OAuth,
   email one-time codes as a fallback
-- OpenAI Realtime API over WebRTC for the conversation; `gpt-4o-mini` for
-  review generation and note condensing
+- OpenAI Realtime API over WebRTC for the conversation (`gpt-realtime-2.1-mini`);
+  `gpt-5.6-luna` for review generation and note condensing, each with a fallback
+  to the previous model if the API rejects the name
 - Vercel
 
 ## Getting Started

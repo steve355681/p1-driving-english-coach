@@ -9,8 +9,15 @@
 
 import { TOPIC_CONDENSE_THRESHOLD } from "@/lib/constants";
 
-/** A cheap text model; this is a summarising job, not a reasoning one. */
-export const CONDENSE_MODEL = "gpt-4o-mini";
+/**
+ * A cheap text model; this is a summarising job, not a reasoning one.
+ *
+ * Kept in step with `REVIEW_MODEL` — same reasoning, same fallback. Notes are
+ * condensed once when a topic is saved, so this runs far less often than
+ * anything else here.
+ */
+export const CONDENSE_MODEL = "gpt-5.6-luna";
+export const CONDENSE_MODEL_FALLBACK = "gpt-4o-mini";
 
 export function needsCondensing(notes: string) {
   return notes.trim().length > TOPIC_CONDENSE_THRESHOLD;

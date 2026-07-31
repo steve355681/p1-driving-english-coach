@@ -6,6 +6,7 @@ import {
   MAX_VOCABULARY,
   REVIEW_FEEDBACK_TYPES,
   REVIEW_MODEL,
+  REVIEW_MODEL_FALLBACK,
   REVIEW_SCHEMA,
   formatTranscript,
   reviewPrompt,
@@ -37,14 +38,51 @@ export async function generateReview(input: {
   level: EnglishLevel;
   transcript: TranscriptTurn[];
 }): Promise<ReviewContent> {
-  const response = await fetch(OPENAI_URL, {
+  let response = await ask(input, REVIEW_MODEL);
+
+  // A renamed or retired model answers 4xx, and this repo cannot reach the API
+  // to find out before shipping. Retrying on the previous model turns that into
+  // a slightly older review instead of no review at all — which would land
+  // after the drive, with the transcript already recorded.
+  if (response.status >= 400 && response.status < 500) {
+    console.error(
+      `Review model ${REVIEW_MODEL} rejected`,
+      await response.text(),
+    );
+    response = await ask(input, REVIEW_MODEL_FALLBACK);
+  }
+
+  if (!response.ok) {
+    throw new Error(`review model rejected the request: ${await response.text()}`);
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+
+  const content = payload.choices?.[0]?.message?.content;
+  if (!content) throw new Error("review model returned nothing");
+
+  return coerce(JSON.parse(content) as unknown);
+}
+
+function ask(
+  input: {
+    apiKey: string;
+    topic: string;
+    level: EnglishLevel;
+    transcript: TranscriptTurn[];
+  },
+  model: string,
+) {
+  return fetch(OPENAI_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${input.apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: REVIEW_MODEL,
+      model,
       messages: [
         {
           role: "user",
@@ -65,19 +103,6 @@ export async function generateReview(input: {
       },
     }),
   });
-
-  if (!response.ok) {
-    throw new Error(`review model rejected the request: ${await response.text()}`);
-  }
-
-  const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  const content = payload.choices?.[0]?.message?.content;
-  if (!content) throw new Error("review model returned nothing");
-
-  return coerce(JSON.parse(content) as unknown);
 }
 
 function text(value: unknown): string {

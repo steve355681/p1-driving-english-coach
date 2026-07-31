@@ -12,12 +12,27 @@ import type { EnglishLevel, FeedbackType, TranscriptTurn } from "@/types";
 /**
  * The single lever on review quality.
  *
- * Same family as the condensing model, for the same reason: this is extraction
- * and rewriting, not reasoning. If real reviews turn out shallow, moving to a
- * stronger model here is a one-line change that costs roughly $0.02 a session
- * instead of $0.001 — still small next to the voice bill.
+ * `gpt-4o-mini` came off OpenAI's price card during the GPT-5 transition. It
+ * still answers and has no announced sunset, but being off the card is the last
+ * stop before one — and this call is the whole after-drive half of the product,
+ * so it should not be resting on a model nobody is publishing a price for.
+ *
+ * Luna is the small tier of the current family, and after the July 2026 cut to
+ * $0.20/$1.20 per 1M it costs about $0.002 for a session's review. Against
+ * roughly $1 of voice for the same session, review model choice is not a cost
+ * decision at all — so pick on capability and on being current.
  */
-export const REVIEW_MODEL = "gpt-4o-mini";
+export const REVIEW_MODEL = "gpt-5.6-luna";
+
+/**
+ * Used when the API rejects `REVIEW_MODEL` outright.
+ *
+ * Model names get renamed and retired, and this repo cannot reach the API to
+ * check. Without a fallback, a rename turns every review into "產生回顧時失敗了"
+ * — after the drive, with the transcript already recorded and nothing the
+ * learner can do about it.
+ */
+export const REVIEW_MODEL_FALLBACK = "gpt-4o-mini";
 
 /**
  * A 60-minute session can produce more transcript than the review needs. The
