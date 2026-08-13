@@ -21,3 +21,4 @@ This product is intentionally designed around:
 - **after driving** review and analytics
 
 It is **not** promising full lock-screen assistant behavior, wake-word reliability, or deep CarPlay / Android Auto integration in the MVP.
+- `08-chatgpt-first-brief.md` — 給下一個專案的初始化簡報：需求、已定案的決策與理由、實測數據、以及改用 ChatGPT 為主體時的限制與待決問題
